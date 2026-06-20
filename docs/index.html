@@ -62,12 +62,12 @@
         </div>
     </div>
 
-    <!-- Turnuva Menüsü -->
+    <!-- Turnuva Giriş Menüsü -->
     <div id="tournament-menu-screen" class="screen">
         <div class="glass-panel">
             <h2 data-i18n="tourney_title">Turnuva Modu</h2>
-            <button onclick="showScreen('tourney-host-screen')" data-i18n="btn_host_tourney">Turnuva Kur</button>
-            <div class="join-section" style="margin-top: 15px;">
+            <button onclick="hostTournament()" data-i18n="btn_host_tourney">Turnuva Kur (Admin)</button>
+            <div class="join-section" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
                 <input type="text" id="tourney-player-name" placeholder="İsminiz (Max 10)" maxlength="10">
                 <input type="text" id="tourney-join-id" placeholder="Turnuva Kodu" maxlength="6" style="margin-top:5px;">
                 <button onclick="joinTournament()" data-i18n="btn_join_tourney">Turnuvaya Katıl</button>
@@ -76,11 +76,11 @@
         </div>
     </div>
 
-    <!-- Turnuva Kurucu (Admin) Ayarları -->
+    <!-- Turnuva Kurucu (Admin) Paneli -->
     <div id="tourney-host-screen" class="screen">
         <div class="glass-panel" style="width: 95%; max-width: 500px;">
-            <h2>Turnuva Paneli</h2>
-            <div id="tourney-host-code" style="font-size: 1.5rem; color: var(--accent); margin-bottom: 10px;">Kod: Bekleniyor</div>
+            <h2>Turnuva Yönetimi</h2>
+            <div id="tourney-host-code" style="font-size: 1.5rem; color: var(--accent); margin-bottom: 10px;">Kod: Bekleniyor...</div>
             <select id="tourney-system" class="dropdown">
                 <option value="points" data-i18n="opt_points">Puan Sistemi (En çok puan alan kazanır)</option>
                 <option value="knockout" data-i18n="opt_knockout">Eleme Usulü (Kaybeden elenir)</option>
@@ -92,7 +92,7 @@
                     <div id="tourney-player-list" class="scroll-list"></div>
                 </div>
                 <div class="panel-section">
-                    <h3>Sohbet (Admin)</h3>
+                    <h3>Sohbet & Moderasyon</h3>
                     <div id="tourney-chat-admin" class="scroll-list chat-box"></div>
                     <div class="chat-input-row">
                         <input type="text" id="admin-chat-input" placeholder="...">
