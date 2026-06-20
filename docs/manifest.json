@@ -1,0 +1,22 @@
+{
+    "name": "Türk Mangalası",
+    "short_name": "Mangala",
+    "description": "Geleneksel Türk Strateji Oyunu",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#121214",
+    "theme_color": "#121214",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2ZmOWYwYSIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjI1IiBmaWxsPSIjMTIxMjE0Ii8+PC9zdmc+",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iI2ZmOWYwYSIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjI1IiBmaWxsPSIjMTIxMjE0Ii8+PC9zdmc+",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}
