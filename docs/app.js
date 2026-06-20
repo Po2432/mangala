@@ -51,6 +51,19 @@ function closePopup() {
     if(popupCallback) popupCallback();
 }
 
+// --- GÜVENLİK (XSS ve KÜFÜR FİLTRESİ) ---
+const badWords = ["fuck", "shit", "bitch", "asshole", "cunt", "amk", "oç", "orospu", "siktir", "piç", "yarrak", "yavşak", "pezevenk", "aq", "sg"];
+function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
+}
+function censorText(text) {
+    let safeText = escapeHTML(text);
+    let regex = new RegExp("\\b(" + badWords.join("|") + ")\\b", "gi");
+    return safeText.replace(regex, "***");
+}
+
 // --- OYUN DEĞİŞKENLERİ ---
 let board = Array(14).fill(4); 
 board[6] = 0; board[13] = 0;
@@ -77,7 +90,6 @@ function goHome() {
     isGameActive = false;
     if(conn) { conn.close(); conn = null; }
     if(peer) { peer.destroy(); peer = null; }
-    // Turnuva bağlantılarını temizle
     Object.values(tourneyClients).forEach(c => c.conn.close());
     tourneyClients = {};
     showScreen('menu-screen'); 
@@ -190,8 +202,6 @@ function createPit(index, owner) {
         if (gameMode === 'local' && currentPlayer === owner) canPlay = true;
         if (gameMode === 'bot' && currentPlayer === 1 && owner === 1) canPlay = true;
         if (gameMode === 'online' && myTurnInOnline && owner === (isHost ? 1 : 2)) canPlay = true;
-        
-        // Turnuva Client'ı kendi kuyusuna tıklayabilir (İlgili match objesinden yetki kontrol edilir)
         if (gameMode === 'tourney' && myTurnInOnline && owner === (amIPlayer1 ? 1 : 2)) canPlay = true;
 
         if(canPlay) {
@@ -334,14 +344,25 @@ let tourneyMatches = {}; // { matchId: { p1, p2, board, turn, active } }
 let tourneyCode = "";
 let matchCounter = 0;
 
+// YENİ EKLENEN: Kod üreterek turnuvayı hostlama
+function hostTournament() {
+    tourneyCode = generateCode();
+    peer = new Peer("trmng-" + tourneyCode);
+    peer.on('open', () => {
+        document.getElementById('tourney-host-code').innerText = "Kod: " + tourneyCode;
+        showScreen('tourney-host-screen');
+        isHost = true;
+    });
+    peer.on('connection', c => {
+        c.on('data', data => handleTourneyDataHost(c.peer, c, data));
+    });
+}
+
 function startTournament() {
     let pIds = Object.keys(tourneyClients);
     if(pIds.length < 2) return showPopup("Hata", "En az 2 oyuncu gerekli.");
     
-    let mode = document.getElementById('tourney-system').value;
-    
-    // Basit rastgele eşleştirme (Şimdilik ilk 2'yi eşleştir, gelişmiş eklenebilir)
-    // iPhone host için Relay Match oluştur
+    // Basit rastgele eşleştirme (Şimdilik ilk 2'yi eşleştir)
     let p1 = pIds[0]; let p2 = pIds[1];
     let mId = "M" + (++matchCounter);
     
@@ -350,7 +371,6 @@ function startTournament() {
         board: [4,4,4,4,4,4, 0, 4,4,4,4,4,4, 0]
     };
     
-    // Oyunculara oyunu başlat komutu gönder
     tourneyClients[p1].conn.send({ type: 'T_START_GAME', mId: mId, isP1: true, oppName: tourneyClients[p2].name });
     tourneyClients[p2].conn.send({ type: 'T_START_GAME', mId: mId, isP1: false, oppName: tourneyClients[p1].name });
     
@@ -364,18 +384,16 @@ function handleHostTourneyMove(mId, peerId, index) {
     
     let isP1 = (match.p1 === peerId);
     let playerNum = isP1 ? 1 : 2;
-    if(match.turn !== playerNum) return; // Sıra onda değil
+    if(match.turn !== playerNum) return; 
 
     let res = executeMove(match.board, playerNum, index);
     match.board = res.board;
-    
     let gameOver = checkTourneyGameOver(match.board);
     
     if(!res.extraTurn && !gameOver) {
         match.turn = match.turn === 1 ? 2 : 1;
     }
 
-    // İki oyuncuya da yeni durumu yolla
     let statePacket = { type: 'T_BOARD_SYNC', board: match.board, turn: match.turn };
     tourneyClients[match.p1].conn.send(statePacket);
     tourneyClients[match.p2].conn.send(statePacket);
@@ -402,33 +420,60 @@ function broadcastTourneyState() {
         id: id, name: tourneyClients[id].name, score: tourneyClients[id].score, banned: tourneyClients[id].banned
     }));
     
-    // Host UI Güncelle
     let hList = document.getElementById('tourney-player-list');
     hList.innerHTML = list.map(p => `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>${p.name} (Puan: ${p.score})</span>
             <div>
-                <span class="admin-action" onclick="tKick('${p.id}')">At</span>
                 <span class="admin-action" onclick="tBan('${p.id}')">${p.banned?'Unban':'Ban'}</span>
+                <span class="admin-action" onclick="tKick('${p.id}')">At</span>
             </div>
         </div>
     `).join('');
 
-    // Client'lara dağıt
-    Object.values(tourneyClients).forEach(c => {
-        c.conn.send({ type: 'T_STATE', list: list });
-    });
+    Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_STATE', list: list }));
 }
 
 function tKick(id) { 
+    if(!tourneyClients[id]) return;
     tourneyClients[id].conn.send({ type: 'T_KICKED' }); 
     tourneyClients[id].conn.close(); 
     delete tourneyClients[id]; 
     broadcastTourneyState(); 
 }
 function tBan(id) { 
+    if(!tourneyClients[id]) return;
     tourneyClients[id].banned = !tourneyClients[id].banned; 
     broadcastTourneyState(); 
+}
+
+// --- MODERASYON (Silme & Bildirme) ---
+function tDeleteMsg(msgId) {
+    let el = document.getElementById(`admin-${msgId}`);
+    if(el) el.innerHTML = `<span class="deleted-msg">Bu mesaj admin tarafından silindi.</span>`;
+    Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_DEL_MSG', msgId: msgId }));
+}
+
+function handleTourneyDataHost(peerId, c, data) {
+    if(data.type === 'T_JOIN') {
+        tourneyClients[peerId] = { name: escapeHTML(data.name), score: 0, banned: false, conn: c };
+        broadcastTourneyState();
+    }
+    if(data.type === 'T_CHAT') {
+        if(tourneyClients[peerId].banned) {
+            c.send({ type: 'T_BANNED_WARN' });
+            return;
+        }
+        broadcastTourneyChat(peerId, tourneyClients[peerId].name, data.msg);
+    }
+    if(data.type === 'T_MOVE') {
+        handleHostTourneyMove(data.mId, peerId, data.index);
+    }
+    if(data.type === 'T_REPORT') {
+        showPopup("Rapor Edildi", `${tourneyClients[peerId].name}, şu kişiyi şikayet etti: ${data.sender}`);
+        let el = document.getElementById(`admin-${data.msgId}`);
+        if(el) el.classList.add('reported-msg');
+    }
 }
 
 // --- TURNUVA SİSTEMİ (CLIENT LOGIC) ---
@@ -440,43 +485,24 @@ function joinTournament() {
     let code = document.getElementById('tourney-join-id').value.trim();
     myTourneyName = document.getElementById('tourney-player-name').value.trim() || "Misafir";
     
-    if(code === "") { // Kendisi kuruyor
-        tourneyCode = generateCode();
-        peer = new Peer("trmng-" + tourneyCode);
-        peer.on('open', () => {
-            document.getElementById('tourney-host-code').innerText = "Kod: " + tourneyCode;
-            showScreen('tourney-host-screen');
-            isHost = true;
+    if (code.length < 5) return showPopup("Hata", "Geçerli bir Turnuva Kodu girin.");
+    
+    peer = new Peer();
+    peer.on('open', () => {
+        conn = peer.connect("trmng-" + code);
+        conn.on('open', () => {
+            conn.send({ type: 'T_JOIN', name: myTourneyName });
+            showScreen('tourney-lobby-screen');
+            document.getElementById('tourney-client-status').innerText = "Bağlanıldı.";
         });
-        peer.on('connection', c => {
-            c.on('data', data => handleTourneyDataHost(c.peer, c, data));
-        });
-    } else { // Başkasına katılıyor
-        peer = new Peer();
-        peer.on('open', () => {
-            conn = peer.connect("trmng-" + code);
-            conn.on('open', () => {
-                conn.send({ type: 'T_JOIN', name: myTourneyName });
-                showScreen('tourney-lobby-screen');
-                document.getElementById('tourney-client-status').innerText = "Bağlanıldı.";
-            });
-            conn.on('data', handleTourneyDataClient);
-        });
-    }
+        conn.on('data', handleTourneyDataClient);
+        conn.on('error', () => showPopup("Hata", "Sunucu bulunamadı."));
+    });
 }
 
-function handleTourneyDataHost(peerId, c, data) {
-    if(data.type === 'T_JOIN') {
-        tourneyClients[peerId] = { name: data.name, score: 0, banned: false, conn: c };
-        broadcastTourneyState();
-    }
-    if(data.type === 'T_CHAT') {
-        if(tourneyClients[peerId].banned) return;
-        broadcastTourneyChat(tourneyClients[peerId].name, data.msg);
-    }
-    if(data.type === 'T_MOVE') {
-        handleHostTourneyMove(data.mId, peerId, data.index);
-    }
+function cReportMsg(msgId, senderName) {
+    if(conn) conn.send({ type: 'T_REPORT', msgId: msgId, sender: senderName });
+    showPopup("Bilgi", "Mesaj moderatöre bildirildi.");
 }
 
 function handleTourneyDataClient(data) {
@@ -485,12 +511,17 @@ function handleTourneyDataClient(data) {
         document.getElementById('tourney-standings').innerHTML = html;
     }
     else if(data.type === 'T_CHAT') {
-        let cb = document.getElementById('tourney-chat-client');
-        cb.innerHTML += `<p><b>${data.sender}:</b> ${data.msg}</p>`;
-        cb.scrollTop = cb.scrollHeight;
+        appendChatToClient(data);
+    }
+    else if(data.type === 'T_BANNED_WARN') {
+        showPopup("Uyarı", dict[currentLang].chat_banned);
+    }
+    else if(data.type === 'T_DEL_MSG') {
+        let el = document.getElementById(`client-${data.msgId}`);
+        if(el) el.innerHTML = `<span class="deleted-msg">Bu mesaj admin tarafından silindi.</span>`;
     }
     else if(data.type === 'T_KICKED') {
-        showPopup("Bilgi", dict[currentLang].kicked); goHome();
+        showPopup("Bilgi", dict[currentLang].kicked, "Tamam", () => goHome());
     }
     else if(data.type === 'T_START_GAME') {
         gameMode = 'tourney';
@@ -499,7 +530,7 @@ function handleTourneyDataClient(data) {
         
         board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0];
         isGameActive = true;
-        myTurnInOnline = amIPlayer1; // P1 her zaman başlar
+        myTurnInOnline = amIPlayer1;
         
         document.getElementById('p1-name').innerText = amIPlayer1 ? myTourneyName : data.oppName;
         document.getElementById('p2-name').innerText = amIPlayer1 ? data.oppName : myTourneyName;
@@ -511,7 +542,7 @@ function handleTourneyDataClient(data) {
         board = data.board;
         myTurnInOnline = (data.turn === (amIPlayer1 ? 1 : 2));
         updateStatus();
-        checkGameOver(); // Kendi ekranında bitiş pop-up'ını tetikler
+        checkGameOver();
     }
 }
 
@@ -519,24 +550,52 @@ function sendTourneyMove(index) {
     if(conn) conn.send({ type: 'T_MOVE', mId: myTourneyMatchId, index: index });
 }
 
-// --- TURNUVA SOHBET ---
-function broadcastTourneyChat(sender, msg) {
-    let msgObj = { type: 'T_CHAT', sender: sender, msg: msg };
-    // Host UI ekle
-    let ab = document.getElementById('tourney-chat-admin');
-    ab.innerHTML += `<p><b>${sender}:</b> ${msg}</p>`;
-    ab.scrollTop = ab.scrollHeight;
-    // Dağıt
+// --- TURNUVA SOHBET İŞLEMLERİ (YENİLENMİŞ) ---
+function broadcastTourneyChat(peerId, sender, msg) {
+    let safeMsg = censorText(msg);
+    let msgId = 'msg_' + Math.random().toString(36).substr(2, 9);
+    let msgObj = { type: 'T_CHAT', id: msgId, peerId: peerId, sender: sender, msg: safeMsg };
+    
+    // Host UI Ekle
+    appendChatToAdmin(msgObj);
+    // Clientlere Gönder
     Object.values(tourneyClients).forEach(c => c.conn.send(msgObj));
 }
 
 function sendTourneyChat(role) {
     let inp = document.getElementById(role + '-chat-input');
     if(!inp.value) return;
-    if(role === 'admin') broadcastTourneyChat("Admin", inp.value);
+    if(role === 'admin') broadcastTourneyChat("admin", "Admin", inp.value);
     else conn.send({ type: 'T_CHAT', msg: inp.value });
     inp.value = "";
 }
 
+function appendChatToAdmin(msgObj) {
+    let ab = document.getElementById('tourney-chat-admin');
+    let html = `<div class="chat-msg" id="admin-${msgObj.id}">
+        <b>${msgObj.sender}:</b> ${msgObj.msg}
+        <div class="chat-actions">`;
+    if(msgObj.peerId !== 'admin') {
+        html += `<button class="chat-action-btn del" onclick="tDeleteMsg('${msgObj.id}')">Sil</button>
+                 <button class="chat-action-btn warn" onclick="tBan('${msgObj.peerId}')">Banla</button>
+                 <button class="chat-action-btn del" onclick="tKick('${msgObj.peerId}')">At (Kick)</button>`;
+    }
+    html += `</div></div>`;
+    ab.innerHTML += html;
+    ab.scrollTop = ab.scrollHeight;
+}
+
+function appendChatToClient(msgObj) {
+    let cb = document.getElementById('tourney-chat-client');
+    let html = `<div class="chat-msg" id="client-${msgObj.id}">
+        <b>${msgObj.sender}:</b> ${msgObj.msg}`;
+    if(msgObj.peerId !== 'admin' && msgObj.sender !== myTourneyName) {
+        html += `<div class="chat-actions"><button class="chat-action-btn warn" onclick="cReportMsg('${msgObj.id}', '${msgObj.sender}')">Bildir</button></div>`;
+    }
+    html += `</div>`;
+    cb.innerHTML += html;
+    cb.scrollTop = cb.scrollHeight;
+}
+
 // Başlangıç Ayarları
-toggleLanguage(); // İlk dili yükle
+toggleLanguage();
