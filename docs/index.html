@@ -6,68 +6,143 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1c1c1e">
-    <title>Türk Mangalası</title>
+    <title>Mangala PWA</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
-    <!-- WebRTC için PeerJS kütüphanesi -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
+    <!-- Dil Seçeneği -->
+    <button id="lang-btn" onclick="toggleLanguage()">EN / TR</button>
+
+    <!-- Özel Popup Overlay -->
+    <div id="popup-overlay" class="overlay">
+        <div class="popup-box">
+            <h2 id="popup-title">Başlık</h2>
+            <p id="popup-message">Mesaj</p>
+            <button id="popup-btn" onclick="closePopup()">Tamam</button>
+        </div>
+    </div>
+
     <!-- Ana Menü -->
     <div id="menu-screen" class="screen active">
         <div class="glass-panel">
-            <h1>Mangala</h1>
-            <p class="subtitle">Geleneksel Türk Strateji Oyunu</p>
-            <button onclick="startGame('local')">Yerel Çok Oyunculu</button>
-            <button onclick="showBotMenu()">Bilgisayara Karşı</button>
-            <button onclick="showOnlineMenu()">Aynı Ağda Oyna (WiFi)</button>
+            <h1 data-i18n="title">Mangala</h1>
+            <p class="subtitle" data-i18n="subtitle">Geleneksel Strateji Oyunu</p>
+            <button onclick="startGame('local')" data-i18n="btn_local">Yerel Çok Oyunculu</button>
+            <button onclick="showBotMenu()" data-i18n="btn_bot">Bilgisayara Karşı</button>
+            <button onclick="showOnlineMenu()" data-i18n="btn_online">Aynı Ağda Oyna (WiFi)</button>
+            <button class="btn-tournament" onclick="showTournamentMenu()" data-i18n="btn_tournament">Turnuva Modu</button>
         </div>
     </div>
 
-    <!-- Bot Zorluk Menüsü -->
+    <!-- Bot Menüsü -->
     <div id="bot-menu-screen" class="screen">
         <div class="glass-panel">
-            <h2>Zorluk Seçin</h2>
-            <button onclick="startGame('bot', 'easy')">Kolay</button>
-            <button onclick="startGame('bot', 'medium')">Orta</button>
-            <button onclick="startGame('bot', 'hard')">Zor</button>
-            <button class="back-btn" onclick="showScreen('menu-screen')">Geri</button>
+            <h2 data-i18n="bot_title">Zorluk Seçin</h2>
+            <button onclick="startGame('bot', 'easy')" data-i18n="bot_easy">Kolay</button>
+            <button onclick="startGame('bot', 'medium')" data-i18n="bot_medium">Orta</button>
+            <button onclick="startGame('bot', 'hard')" data-i18n="bot_hard">Zor</button>
+            <button class="back-btn" onclick="showScreen('menu-screen')" data-i18n="btn_back">Geri</button>
         </div>
     </div>
 
-    <!-- Online/WiFi Menüsü -->
+    <!-- 1v1 Online Menü -->
     <div id="online-menu-screen" class="screen">
         <div class="glass-panel">
-            <h2>Çevrimiçi / WiFi</h2>
-            <div id="online-status">Bağlantı bekleniyor...</div>
-            <button onclick="hostGame()">Oda Kur</button>
+            <h2 data-i18n="online_title">Çevrimiçi / WiFi</h2>
+            <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;" data-i18n="network_warn">Uyarı: Sabit bir WiFi ağına bağlı olduğunuzdan emin olun (Mobil Hotspot bağlantı kopmalarına yol açabilir).</p>
+            <div id="online-status" data-i18n="waiting_conn">Bağlantı bekleniyor...</div>
+            <button onclick="hostGame()" data-i18n="btn_host">Oda Kur</button>
             <div class="join-section" style="margin-top: 15px;">
                 <input type="text" id="join-id" placeholder="Oda Kodunu Girin" maxlength="6">
-                <button onclick="joinGame()">Odaya Katıl</button>
+                <button onclick="joinGame()" data-i18n="btn_join">Odaya Katıl</button>
             </div>
-            <button class="back-btn" onclick="showScreen('menu-screen')">Geri</button>
+            <button class="back-btn" onclick="showScreen('menu-screen')" data-i18n="btn_back">Geri</button>
+        </div>
+    </div>
+
+    <!-- Turnuva Menüsü -->
+    <div id="tournament-menu-screen" class="screen">
+        <div class="glass-panel">
+            <h2 data-i18n="tourney_title">Turnuva Modu</h2>
+            <button onclick="showScreen('tourney-host-screen')" data-i18n="btn_host_tourney">Turnuva Kur</button>
+            <div class="join-section" style="margin-top: 15px;">
+                <input type="text" id="tourney-player-name" placeholder="İsminiz (Max 10)" maxlength="10">
+                <input type="text" id="tourney-join-id" placeholder="Turnuva Kodu" maxlength="6" style="margin-top:5px;">
+                <button onclick="joinTournament()" data-i18n="btn_join_tourney">Turnuvaya Katıl</button>
+            </div>
+            <button class="back-btn" onclick="goHome()" data-i18n="btn_back">Geri</button>
+        </div>
+    </div>
+
+    <!-- Turnuva Kurucu (Admin) Ayarları -->
+    <div id="tourney-host-screen" class="screen">
+        <div class="glass-panel" style="width: 95%; max-width: 500px;">
+            <h2>Turnuva Paneli</h2>
+            <div id="tourney-host-code" style="font-size: 1.5rem; color: var(--accent); margin-bottom: 10px;">Kod: Bekleniyor</div>
+            <select id="tourney-system" class="dropdown">
+                <option value="points" data-i18n="opt_points">Puan Sistemi (En çok puan alan kazanır)</option>
+                <option value="knockout" data-i18n="opt_knockout">Eleme Usulü (Kaybeden elenir)</option>
+            </select>
+            
+            <div class="split-view">
+                <div class="panel-section">
+                    <h3>Oyuncular</h3>
+                    <div id="tourney-player-list" class="scroll-list"></div>
+                </div>
+                <div class="panel-section">
+                    <h3>Sohbet (Admin)</h3>
+                    <div id="tourney-chat-admin" class="scroll-list chat-box"></div>
+                    <div class="chat-input-row">
+                        <input type="text" id="admin-chat-input" placeholder="...">
+                        <button onclick="sendTourneyChat('admin')">Gönder</button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startTournament()" style="margin-top: 10px;">Eşleştir & Başlat</button>
+            <button class="back-btn" onclick="goHome()" data-i18n="btn_back">Geri / Çık</button>
+        </div>
+    </div>
+
+    <!-- Turnuva Oyuncu Lobisi -->
+    <div id="tourney-lobby-screen" class="screen">
+        <div class="glass-panel" style="width: 95%; max-width: 500px;">
+            <h2 data-i18n="tourney_lobby">Turnuva Lobisi</h2>
+            <div id="tourney-client-status">Admin bekleniyor...</div>
+            
+            <div class="split-view" style="margin-top: 15px;">
+                <div class="panel-section">
+                    <h3>Liderlik / Durum</h3>
+                    <div id="tourney-standings" class="scroll-list"></div>
+                </div>
+                <div class="panel-section">
+                    <h3>Sohbet</h3>
+                    <div id="tourney-chat-client" class="scroll-list chat-box"></div>
+                    <div class="chat-input-row">
+                        <input type="text" id="client-chat-input" placeholder="...">
+                        <button onclick="sendTourneyChat('client')">Gönder</button>
+                    </div>
+                </div>
+            </div>
+            <button class="back-btn" onclick="goHome()" data-i18n="btn_back">Çıkış</button>
         </div>
     </div>
 
     <!-- Oyun Ekranı -->
     <div id="game-screen" class="screen">
         <div class="header">
-            <button class="back-btn-small" onclick="goHome()">Ana Menü</button>
+            <button class="back-btn-small" onclick="goHome()" data-i18n="btn_menu">Menü</button>
             <div id="status-text">Sıra Sende</div>
         </div>
         
         <div class="board-container">
-            <!-- P2 Hazine (Sol) -->
             <div class="store" id="store-p2">0</div>
-            
             <div class="pits-grid">
-                <!-- P2 Kuyuları (Üst sıra, Sağdan Sola 12'den 7'ye) -->
                 <div class="pit-row" id="row-p2"></div>
-                <!-- P1 Kuyuları (Alt sıra, Soldan Sağa 0'dan 5'e) -->
                 <div class="pit-row" id="row-p1"></div>
             </div>
-
-            <!-- P1 Hazine (Sağ) -->
             <div class="store" id="store-p1">0</div>
         </div>
         
