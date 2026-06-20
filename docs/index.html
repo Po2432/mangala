@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1c1c1e">
+    <title>Türk Mangalası</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <!-- WebRTC için PeerJS kütüphanesi -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <!-- Ana Menü -->
+    <div id="menu-screen" class="screen active">
+        <div class="glass-panel">
+            <h1>Mangala</h1>
+            <p class="subtitle">Geleneksel Türk Strateji Oyunu</p>
+            <button onclick="startGame('local')">Yerel Çok Oyunculu</button>
+            <button onclick="showBotMenu()">Bilgisayara Karşı</button>
+            <button onclick="showOnlineMenu()">Aynı Ağda Oyna (WiFi)</button>
+        </div>
+    </div>
+
+    <!-- Bot Zorluk Menüsü -->
+    <div id="bot-menu-screen" class="screen">
+        <div class="glass-panel">
+            <h2>Zorluk Seçin</h2>
+            <button onclick="startGame('bot', 'easy')">Kolay</button>
+            <button onclick="startGame('bot', 'medium')">Orta</button>
+            <button onclick="startGame('bot', 'hard')">Zor</button>
+            <button class="back-btn" onclick="showScreen('menu-screen')">Geri</button>
+        </div>
+    </div>
+
+    <!-- Online/WiFi Menüsü -->
+    <div id="online-menu-screen" class="screen">
+        <div class="glass-panel">
+            <h2>Çevrimiçi / WiFi</h2>
+            <div id="online-status">Bağlantı bekleniyor...</div>
+            <button onclick="hostGame()">Oda Kur</button>
+            <div class="join-section" style="margin-top: 15px;">
+                <input type="text" id="join-id" placeholder="Oda Kodunu Girin" maxlength="6">
+                <button onclick="joinGame()">Odaya Katıl</button>
+            </div>
+            <button class="back-btn" onclick="showScreen('menu-screen')">Geri</button>
+        </div>
+    </div>
+
+    <!-- Oyun Ekranı -->
+    <div id="game-screen" class="screen">
+        <div class="header">
+            <button class="back-btn-small" onclick="goHome()">Ana Menü</button>
+            <div id="status-text">Sıra Sende</div>
+        </div>
+        
+        <div class="board-container">
+            <!-- P2 Hazine (Sol) -->
+            <div class="store" id="store-p2">0</div>
+            
+            <div class="pits-grid">
+                <!-- P2 Kuyuları (Üst sıra, Sağdan Sola 12'den 7'ye) -->
+                <div class="pit-row" id="row-p2"></div>
+                <!-- P1 Kuyuları (Alt sıra, Soldan Sağa 0'dan 5'e) -->
+                <div class="pit-row" id="row-p1"></div>
+            </div>
+
+            <!-- P1 Hazine (Sağ) -->
+            <div class="store" id="store-p1">0</div>
+        </div>
+        
+        <div class="player-info" id="player-info">
+            <span id="p1-name">Oyuncu 1</span> vs <span id="p2-name">Oyuncu 2</span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
