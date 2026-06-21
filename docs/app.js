@@ -14,7 +14,7 @@ const dict = {
         tab_players: "Oyuncular", tab_matches: "Maçlar", tab_settings: "Ayarlar", chat: "Sohbet",
         create_match: "Yeni Eşleşme Yarat", btn_add: "Ekle", btn_end_tourney: "Turnuvayı Bitir", active_matches: "Aktif Maçlar",
         btn_undo: "Geri(Undo)", btn_redo: "İleri(Redo)", btn_restart: "Baştan", btn_end_match: "Bitir",
-        spectator_mode: "İzleyici Modu", btn_close_room: "Odayı Kapat"
+        spectator_mode: "İzleyici Modu", btn_close_room: "Odayı Kapat", blacklist: "Kara Liste (İsim Engelle)"
     },
     en: {
         title: "Mangala", subtitle: "Traditional Strategy Game",
@@ -30,7 +30,7 @@ const dict = {
         tab_players: "Players", tab_matches: "Matches", tab_settings: "Settings", chat: "Chat",
         create_match: "Create Match", btn_add: "Add", btn_end_tourney: "End Tournament", active_matches: "Active Matches",
         btn_undo: "Undo", btn_redo: "Redo", btn_restart: "Restart", btn_end_match: "End Early",
-        spectator_mode: "Spectator Mode", btn_close_room: "Close Room"
+        spectator_mode: "Spectator Mode", btn_close_room: "Close Room", blacklist: "Blacklist (Block Name)"
     }
 };
 
@@ -112,21 +112,15 @@ function leaveMatchScreen() {
             isSpectating = false;
             showScreen('tourney-lobby-screen');
         }
-    } else {
-        goHome();
-    }
+    } else { goHome(); }
 }
 
 // --- OYUN DEĞİŞKENLERİ ---
 let board = Array(14).fill(4); board[6] = 0; board[13] = 0;
-let currentPlayer = 1; 
-let gameMode = 'local'; 
-let botDifficulty = 'easy'; 
-let isGameActive = false;
+let currentPlayer = 1; let gameMode = 'local'; let botDifficulty = 'easy'; let isGameActive = false;
 
 // --- AĞ (PeerJS) DEĞİŞKENLERİ ---
-let peer = null; let conn = null; 
-let isHost = false; let myTurnInOnline = false;
+let peer = null; let conn = null; let isHost = false; let myTurnInOnline = false;
 
 // --- MANGALA MOTORU ---
 function getNextIndex(curr, p) {
@@ -220,8 +214,7 @@ function checkGameOver() {
             let mS = a ? p1 : p2, oS = a ? p2 : p1;
             msg = mS > oS ? d.win_you : (oS > mS ? d.win_opp : d.draw);
         }
-        renderBoard();
-        showPopup("Oyun Bitti", `${msg}\n( ${p1} - ${p2} )`, "Tamam", () => leaveMatchScreen());
+        renderBoard(); showPopup("Oyun Bitti", `${msg}\n( ${p1} - ${p2} )`, "Tamam", () => leaveMatchScreen());
         return true;
     }
     return false;
@@ -276,15 +269,34 @@ function closeWiFiRoom() { if(conn && conn.open) conn.send({type:'ROOM_CLOSED'})
 // ==========================================
 // --- TURNUVA SİSTEMİ (HOST / ADMIN) ---
 // ==========================================
-let tourneyClients = {}; // id: {name, score, banned, conn}
-let tourneyMatches = {}; // mId: {p1, p2, status, board, turn, history, redo, spectators}
-let tourneyCode = ""; let matchCounter = 0;
-let chatLocked = false; let repEnabled = true;
-let adminWatchingId = null;
+let tourneyClients = {}; let tourneyMatches = {}; let tourneyCode = ""; let matchCounter = 0;
+let chatLocked = false; let repEnabled = true; let adminWatchingId = null;
+let bannedUsernames = []; // YENİ: Kara Liste Özelliği
 
 function toggleChatLock() { chatLocked = document.getElementById('chat-lock-toggle').checked; }
 function toggleReport() { repEnabled = document.getElementById('report-toggle').checked; }
 function updateTourneySystem() { renderAdminMatches(); }
+
+// --- Blacklist (Kara Liste) İşlemleri ---
+function addBlacklist() {
+    let val = document.getElementById('blacklist-input').value.trim().toLowerCase();
+    if(val && !bannedUsernames.includes(val)) {
+        bannedUsernames.push(val);
+        document.getElementById('blacklist-input').value = "";
+        renderBlacklist();
+    }
+}
+function removeBlacklist(name) {
+    bannedUsernames = bannedUsernames.filter(n => n !== name);
+    renderBlacklist();
+}
+function renderBlacklist() {
+    document.getElementById('blacklist-container').innerHTML = bannedUsernames.map(n => 
+        `<span style="background:#e74c3c; padding:4px 10px; border-radius:12px; font-size:0.85rem; display:flex; align-items:center; gap:6px; color:white;">
+            ${n} <b style="cursor:pointer; font-size:1.1rem; line-height:1;" onclick="removeBlacklist('${n}')">×</b>
+        </span>`
+    ).join('');
+}
 
 function hostTournament() {
     tourneyCode = generateCode(); peer = new Peer("trmng-" + tourneyCode);
@@ -294,8 +306,16 @@ function hostTournament() {
 
 function handleTourneyDataHost(pId, c, data) {
     if(data.type === 'T_JOIN') {
-        let exists = Object.values(tourneyClients).some(cl => cl.name.toLowerCase() === data.name.toLowerCase());
-        if(exists) { c.send({ type: 'T_ERROR', msg: "Bu isim kullanımda." }); setTimeout(()=>c.close(), 500); return; }
+        let reqName = data.name.trim().toLowerCase();
+        // Kara Liste Kontrolü
+        if(bannedUsernames.includes(reqName)) {
+            c.send({ type: 'T_ERROR', msg: "Bu isim admin tarafından engellenmiştir (Kara Liste)." });
+            setTimeout(()=>c.close(), 500); return;
+        }
+        // İsim Çakışma Kontrolü
+        let exists = Object.values(tourneyClients).some(cl => cl.name.toLowerCase() === reqName);
+        if(exists) { c.send({ type: 'T_ERROR', msg: "Bu isim kullanımda, lütfen başka bir isim seçin." }); setTimeout(()=>c.close(), 500); return; }
+        
         tourneyClients[pId] = { name: escapeHTML(data.name), score: 0, banned: false, conn: c };
         broadcastTourneyState(); updateSelects();
     }
@@ -341,10 +361,8 @@ function aStartMatch(mId) {
 }
 function aCancelMatch(mId) { delete tourneyMatches[mId]; renderAdminMatches(); broadcastTourneyState(); }
 function aForceWin(mId, winnerNum) {
-    let m = tourneyMatches[mId];
-    if(document.getElementById('tourney-system').value === 'points') return; // Knockout only
-    let winnerId = winnerNum === 1 ? m.p1 : m.p2;
-    if(tourneyClients[winnerId]) tourneyClients[winnerId].score += 3;
+    let m = tourneyMatches[mId]; if(document.getElementById('tourney-system').value === 'points') return; 
+    let winnerId = winnerNum === 1 ? m.p1 : m.p2; if(tourneyClients[winnerId]) tourneyClients[winnerId].score += 3;
     m.status = 'finished'; renderAdminMatches(); broadcastTourneyState();
 }
 
@@ -353,33 +371,23 @@ function handleHostTourneyMove(mId, pId, idx) {
     let m = tourneyMatches[mId]; if(!m || m.status !== 'active') return;
     let isP1 = (m.p1 === pId); let pN = isP1 ? 1 : 2; if(m.turn !== pN) return; 
 
-    // Undo için kaydet
     m.history.push({ board: [...m.board], turn: m.turn }); m.redo = [];
-
     let res = executeMove(m.board, pN, idx); m.board = res.board;
     let over = checkTourneyGameOver(m.board);
     if(!res.extraTurn && !over) m.turn = m.turn === 1 ? 2 : 1;
 
-    broadcastMatchSync(mId);
-
-    if(over) processMatchFinish(mId);
+    broadcastMatchSync(mId); if(over) processMatchFinish(mId);
 }
-
 function broadcastMatchSync(mId) {
-    let m = tourneyMatches[mId];
-    let pkt = { type: 'T_BOARD_SYNC', board: m.board, turn: m.turn };
+    let m = tourneyMatches[mId]; let pkt = { type: 'T_BOARD_SYNC', board: m.board, turn: m.turn };
     if(tourneyClients[m.p1]) tourneyClients[m.p1].conn.send(pkt);
     if(tourneyClients[m.p2]) tourneyClients[m.p2].conn.send(pkt);
     m.spectators.forEach(sId => { if(tourneyClients[sId]) tourneyClients[sId].conn.send(pkt); });
-    
     if(adminWatchingId === mId) { board = m.board; myTurnInOnline = false; updateStatus(); }
 }
-
 function checkTourneyGameOver(b) { let s1=0, s2=0; for(let i=0;i<6;i++)s1+=b[i]; for(let i=7;i<13;i++)s2+=b[i]; return (s1===0&&s2===0); }
-
 function processMatchFinish(mId) {
-    let m = tourneyMatches[mId]; m.status = 'finished';
-    let s1 = m.board[6], s2 = m.board[13];
+    let m = tourneyMatches[mId]; m.status = 'finished'; let s1 = m.board[6], s2 = m.board[13];
     if(document.getElementById('tourney-system').value === 'points') {
         if(s1 > s2) { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 3; }
         else if(s2 > s1) { if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 3; }
@@ -418,7 +426,6 @@ function aRestart() {
 }
 function aEndEarly() {
     let m = tourneyMatches[adminWatchingId]; if(!m) return;
-    // Puanlama sistemine mevcut tahta durumunu dahil et veya bitir.
     m.board[6] += m.board.slice(0,6).reduce((a,b)=>a+b,0);
     m.board[13] += m.board.slice(7,13).reduce((a,b)=>a+b,0);
     for(let i=0;i<=5;i++) m.board[i]=0; for(let i=7;i<=12;i++) m.board[i]=0;
@@ -428,12 +435,11 @@ function aEndEarly() {
 function adminEndTournament() {
     let list = Object.keys(tourneyClients).map(id => ({ name: tourneyClients[id].name, score: tourneyClients[id].score })).sort((a,b)=>b.score - a.score);
     Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_TOURNEY_END', list: list }));
-    
-    let html = list.map((p,i)=>`<div>${i+1}. ${p.name} - ${p.score} Puan</div>`).join('');
+    let html = list.map((p,i)=>`<div style="margin-bottom:5px;"><b>${i+1}.</b> ${p.name} - <span style="color:var(--accent);">${p.score} Puan</span></div>`).join('');
     showPopup("Turnuva Bitti", "Sonuçlar:", "Ana Menü", ()=>goHome(), html);
 }
 
-// Moderasyon (Ban / Kick)
+// Moderasyon
 function broadcastTourneyState() {
     let list = Object.keys(tourneyClients).map(id => ({ id: id, name: tourneyClients[id].name, score: tourneyClients[id].score, banned: tourneyClients[id].banned })).sort((a,b)=>b.score - a.score);
     let ml = Object.keys(tourneyMatches).map(mId => {
@@ -442,10 +448,9 @@ function broadcastTourneyState() {
 
     let hList = document.getElementById('tourney-player-list');
     hList.innerHTML = list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>${p.name} (${p.score})</span>
+        <span>${p.name} <b style="color:var(--accent);">(${p.score})</b></span>
         <div><span class="chat-action-btn warn" onclick="tBan('${p.id}')">${p.banned?'Unban':'Ban'}</span><span class="chat-action-btn del" onclick="tKick('${p.id}')">Kick</span></div>
     </div>`).join('');
-
     Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_STATE', list: list, matches: ml }));
 }
 
@@ -459,10 +464,9 @@ function renderAdminMatches() {
             acts += `<button class="chat-action-btn green" onclick="aStartMatch('${mId}')">Başlat</button>`;
             if(sys === 'knockout') acts += `<button class="chat-action-btn" onclick="aForceWin('${mId}', 1)">P1 Win</button><button class="chat-action-btn" onclick="aForceWin('${mId}', 2)">P2 Win</button>`;
             acts += `<button class="chat-action-btn del" onclick="aCancelMatch('${mId}')">İptal</button>`;
-        } else if(m.status === 'active') {
-            acts += `<button class="chat-action-btn" onclick="aWatchMatch('${mId}')">Yönet / İzle</button>`;
-        } else acts += `<span>(Bitti)</span>`;
-        return `<div class="match-item"><div><b>${n1}</b> vs <b>${n2}</b> - ${m.status}</div><div>${acts}</div></div>`;
+        } else if(m.status === 'active') acts += `<button class="chat-action-btn" onclick="aWatchMatch('${mId}')">Yönet / İzle</button>`;
+        else acts += `<span style="color:#aaa;">(Bitti)</span>`;
+        return `<div class="match-item"><div style="margin-bottom:8px;"><b>${n1}</b> vs <b>${n2}</b> - <i>${m.status}</i></div><div style="display:flex; gap:5px;">${acts}</div></div>`;
     }).join('');
     document.getElementById('tourney-matches-admin').innerHTML = html;
 }
@@ -481,10 +485,7 @@ function tKick(id) {
     broadcastTourneyState(); renderAdminMatches(); updateSelects();
 }
 function tBan(id) { if(!tourneyClients[id]) return; tourneyClients[id].banned = !tourneyClients[id].banned; broadcastTourneyState(); }
-function tDeleteMsg(msgId) {
-    let el = document.getElementById(`admin-${msgId}`); if(el) el.innerHTML = `<span class="deleted-msg">Silindi.</span>`;
-    Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_DEL_MSG', msgId: msgId }));
-}
+function tDeleteMsg(msgId) { let el = document.getElementById(`admin-${msgId}`); if(el) el.innerHTML = `<span class="deleted-msg">Silindi.</span>`; Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_DEL_MSG', msgId: msgId })); }
 
 // ==========================================
 // --- TURNUVA SİSTEMİ (CLIENT) ---
@@ -511,10 +512,10 @@ function joinTournament() {
 function handleTourneyDataClient(d) {
     if(d.type === 'T_ERROR') { showPopup("Hata", d.msg, "Tamam", ()=>goHome()); }
     else if(d.type === 'T_STATE') {
-        document.getElementById('tourney-standings').innerHTML = d.list.map(p => `<div>${p.name} - ${p.score} P.</div>`).join('');
+        document.getElementById('tourney-standings').innerHTML = d.list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between;"><span>${p.name}</span><b style="color:var(--accent);">${p.score} P.</b></div>`).join('');
         document.getElementById('tourney-matches-client').innerHTML = d.matches.map(m => {
             let act = m.status === 'active' ? `<button class="chat-action-btn green" onclick="cWatch('${m.id}')">İzle</button>` : '';
-            return `<div class="match-item"><div>${m.p1N} vs ${m.p2N} (${m.status})</div>${act}</div>`;
+            return `<div class="match-item"><div style="margin-bottom:6px;">${m.p1N} vs ${m.p2N} <i>(${m.status})</i></div>${act}</div>`;
         }).join('');
     }
     else if(d.type === 'T_CHAT') appendChatToClient(d);
@@ -522,7 +523,7 @@ function handleTourneyDataClient(d) {
     else if(d.type === 'T_DEL_MSG') { let el = document.getElementById(`client-${d.msgId}`); if(el) el.innerHTML = `<span class="deleted-msg">Silindi.</span>`; }
     else if(d.type === 'T_KICKED') showPopup("Uyarı", dict[currentLang].kicked, "Tamam", () => goHome());
     else if(d.type === 'T_TOURNEY_END') {
-        let html = d.list.map((p,i)=>`<div>${i+1}. ${p.name} - ${p.score} Puan</div>`).join('');
+        let html = d.list.map((p,i)=>`<div style="margin-bottom:5px;"><b>${i+1}.</b> ${p.name} - <span style="color:var(--accent);">${p.score} Puan</span></div>`).join('');
         showPopup("Turnuva Bitti", "Sıralama:", "Ana Menü", ()=>goHome(), html);
     }
     else if(d.type === 'T_START_GAME') {
