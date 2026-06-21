@@ -12,11 +12,10 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <!-- Her Ekranın Üstünde Sabit Kalan Dil Butonu -->
     <button id="lang-btn" onclick="toggleLanguage()">EN / TR</button>
 
-    <!-- Her Zaman Görünür Sürüm Numarası -->
-    <div id="app-version">v1.1.0</div>
+    <!-- Her Zaman Görünür Sürüm Numarası v1.3.0 -->
+    <div id="app-version">v1.3.0</div>
 
     <!-- Özel Popup Overlay -->
     <div id="popup-overlay" class="overlay">
@@ -93,7 +92,6 @@
                 <button class="tab-btn" onclick="switchAdminTab('tab-admin-settings')" data-i18n="tab_settings">Ayarlar & Sohbet</button>
             </div>
 
-            <!-- Admin Oyuncular Tab -->
             <div id="tab-admin-players" class="tab-content active split-view">
                 <div class="panel-section">
                     <h3 data-i18n="tab_players">Oyuncular (Sıralama)</h3>
@@ -101,7 +99,6 @@
                 </div>
             </div>
 
-            <!-- Admin Maçlar Tab -->
             <div id="tab-admin-matches" class="tab-content split-view">
                 <div class="panel-section">
                     <h3 data-i18n="create_match">Yeni Eşleşme Yarat</h3>
@@ -114,12 +111,11 @@
                 </div>
             </div>
 
-            <!-- Admin Ayarlar & Sohbet Tab -->
             <div id="tab-admin-settings" class="tab-content split-view">
                 <div class="panel-section" style="flex:1;">
                     <h3 data-i18n="tab_settings">Sistem Ayarları</h3>
                     <select id="tourney-system" class="dropdown" onchange="updateTourneySystem()">
-                        <option value="points" data-i18n="opt_points">Puan Sistemi</option>
+                        <option value="points" data-i18n="opt_points">Puan Sistemi (Toplanan taşlar puandır)</option>
                         <option value="knockout" data-i18n="opt_knockout">Eleme Usulü</option>
                     </select>
                     
@@ -195,7 +191,6 @@
 
     <!-- Oyun Ekranı -->
     <div id="game-screen" class="screen">
-        <!-- Daha düzgün bir akış için position:absolute yerine normal flex flow -->
         <div class="game-header">
             <button class="back-btn-small" onclick="leaveMatchScreen()" data-i18n="btn_menu">Menü / Çık</button>
             <div id="status-text">Sıra Sende</div>
