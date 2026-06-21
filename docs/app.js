@@ -1,3 +1,6 @@
+// OYUN SÜRÜMÜ
+const APP_VERSION = "v1.3.0";
+
 // --- ÇEVİRİ (i18n) ---
 const dict = {
     tr: {
@@ -14,7 +17,8 @@ const dict = {
         tab_players: "Oyuncular", tab_matches: "Maçlar", tab_settings: "Ayarlar", chat: "Sohbet",
         create_match: "Yeni Eşleşme Yarat", btn_add: "Ekle", btn_end_tourney: "Turnuvayı Bitir", active_matches: "Aktif Maçlar",
         btn_undo: "Geri(Undo)", btn_redo: "İleri(Redo)", btn_restart: "Baştan", btn_end_match: "Bitir",
-        spectator_mode: "İzleyici Modu", btn_close_room: "Odayı Kapat", blacklist: "Kara Liste (İsim Engelle)"
+        spectator_mode: "İzleyici Modu", btn_close_room: "Odayı Kapat", blacklist: "Kara Liste (İsim Engelle)",
+        version_err: `Sürüm uyuşmazlığı! (Sunucu: ${APP_VERSION}). Lütfen uygulamanızı güncelleyin.`, room_closed: "Oda sahibi odayı kapattı."
     },
     en: {
         title: "Mangala", subtitle: "Traditional Strategy Game",
@@ -30,7 +34,8 @@ const dict = {
         tab_players: "Players", tab_matches: "Matches", tab_settings: "Settings", chat: "Chat",
         create_match: "Create Match", btn_add: "Add", btn_end_tourney: "End Tournament", active_matches: "Active Matches",
         btn_undo: "Undo", btn_redo: "Redo", btn_restart: "Restart", btn_end_match: "End Early",
-        spectator_mode: "Spectator Mode", btn_close_room: "Close Room", blacklist: "Blacklist (Block Name)"
+        spectator_mode: "Spectator Mode", btn_close_room: "Close Room", blacklist: "Blacklist (Block Name)",
+        version_err: `Version mismatch! (Host: ${APP_VERSION}). Please update your app.`, room_closed: "The host closed the room."
     }
 };
 
@@ -62,13 +67,37 @@ function closePopup() {
     if(popupCallback) popupCallback();
 }
 
-// --- GÜVENLİK (XSS ve KÜFÜR FİLTRESİ) ---
-const badWords = ["fuck", "shit", "bitch", "asshole", "cunt", "amk", "oç", "orospu", "siktir", "piç", "yarrak", "yavşak", "pezevenk", "aq", "sg"];
+// --- GÜVENLİK, OBFUSCATION & BASIC AI ---
+// Şifrelenmiş Küfür ve Nefret Listesi (F12'de görünmemesi için Base64 encoding kullanıldı)
+const _bws = [
+    "ZnVjaw==", "c2hpdA==", "Yml0Y2g=", "YXNzaG9sZQ==", "Y3VudA==", "YW1r", "b8On", "b3Jvc3B1", 
+    "c2lrdGly", "cGnDpwo=", "eWFycmFr", "eWF2xZ9haw==", "cGV6ZXZlbms=", "YXE=", "c2c=", 
+    "bmlnZ2Vy", "bmVncm8=", "bmF6aQ==", "aGl0bGVy", "a2lsbA=="
+];
+function getBadWords() { 
+    return _bws.map(w => decodeURIComponent(escape(atob(w.trim()))).replace(/\n/g, ''));
+}
 function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)); }
 function censorText(text) {
     let safeText = escapeHTML(text);
-    let regex = new RegExp("\\b(" + badWords.join("|") + ")\\b", "gi");
+    let bw = getBadWords();
+    let regex = new RegExp("\\b(" + bw.join("|") + ")\\b", "gi");
     return safeText.replace(regex, "***");
+}
+
+// Temel Yapay Zeka Tehdit Algılayıcı (Bağlam bazlı pattern'ler gizlenmiştir)
+// İçeriği: "will kill", "find you", "evini bili", "adresini ver", "döverim" vs.
+const _tps = [
+    "d2lsbCBraWxs", "ZmluZCB5b3U=", "d2hlcmUgeW91IGxpdmU=", "YmVhdCB5b3U=",
+    "c2VuaSDDtmxkw7xy", "ZXZpbmkgYmlsaQ==", "YWRyZXNpbmkgdmVy", "Z2ViZXJ0",
+    "ZMO2dmVyaW0=", "w7Zsw7xyZWM="
+];
+function getThreatPatterns() { return _tps.map(w => decodeURIComponent(escape(atob(w.trim())))); }
+
+function detectThreat(text) {
+    let tp = getThreatPatterns();
+    let t = text.toLowerCase();
+    return tp.some(p => t.includes(p));
 }
 
 // --- EKRAN YÖNETİMİ & TABLAR ---
@@ -244,25 +273,56 @@ function playBotMove() {
 
 // --- 1V1 ONLINE ---
 function generateCode() { return Math.floor(10000 + Math.random() * 90000).toString(); }
+
 function hostGame() {
     let c = generateCode(); peer = new Peer("mngltrk-" + c);
     peer.on('open', () => { document.getElementById('online-status').innerText = `Oda: ${c}\nBekleniyor...`; isHost = true; });
-    peer.on('connection', (cn) => { conn = cn; setupConn(); });
+    peer.on('connection', (cn) => { 
+        conn = cn; 
+        conn.on('data', (d) => {
+            if(d.type === 'WIFI_JOIN') {
+                if(d.version !== APP_VERSION) {
+                    conn.send({type: 'WIFI_ERROR', msg: dict[currentLang].version_err});
+                    setTimeout(() => { conn.close(); conn=null; }, 500);
+                } else {
+                    conn.send({type: 'WIFI_OK'});
+                    showPopup("Başarılı", "Oyun başlıyor.");
+                    setTimeout(() => startGame('online'), 1000);
+                }
+            } else if(d.type === 'MOVE') {
+                handleMove(d.index);
+            } else if(d.type === 'ROOM_CLOSED') {
+                showPopup("Uyarı", dict[currentLang].room_closed, "Tamam", ()=>goHome());
+            }
+        });
+    });
 }
+
 function joinGame() {
     let c = document.getElementById('join-id').value.trim(); if (c.length < 5) return showPopup("Hata", "Kod girin.");
     document.getElementById('online-status').innerText = "Bağlanılıyor...";
     peer = new Peer();
-    peer.on('open', () => { isHost = false; conn = peer.connect("mngltrk-" + c); conn.on('open', setupConn); conn.on('error', () => showPopup("Hata", "Bulunamadı.")); });
-}
-function setupConn() {
-    showPopup("Başarılı", "Oyun başlıyor.");
-    conn.on('data', (d) => { 
-        if (d.type === 'MOVE') handleMove(d.index); 
-        else if (d.type === 'ROOM_CLOSED') { showPopup("Uyarı", "Oda sahibi odayı kapattı.", "Tamam", ()=>goHome()); }
+    peer.on('open', () => { 
+        isHost = false; conn = peer.connect("mngltrk-" + c); 
+        conn.on('open', () => {
+            conn.send({ type: 'WIFI_JOIN', version: APP_VERSION });
+        }); 
+        conn.on('data', (d) => {
+            if(d.type === 'WIFI_ERROR') {
+                showPopup("Hata", d.msg, "Tamam", () => goHome());
+            } else if(d.type === 'WIFI_OK') {
+                document.getElementById('online-status').innerText = "Bağlandı! Oyun başlıyor...";
+                setTimeout(() => startGame('online'), 1000);
+            } else if(d.type === 'MOVE') {
+                handleMove(d.index);
+            } else if(d.type === 'ROOM_CLOSED') {
+                showPopup("Uyarı", dict[currentLang].room_closed, "Tamam", () => goHome());
+            }
+        });
+        conn.on('error', () => showPopup("Hata", "Bulunamadı.")); 
     });
-    setTimeout(() => startGame('online'), 1000);
 }
+
 function sendMove(idx) { if (conn && conn.open) conn.send({ type: 'MOVE', index: idx }); }
 function closeWiFiRoom() { if(conn && conn.open) conn.send({type:'ROOM_CLOSED'}); goHome(); }
 
@@ -271,7 +331,7 @@ function closeWiFiRoom() { if(conn && conn.open) conn.send({type:'ROOM_CLOSED'})
 // ==========================================
 let tourneyClients = {}; let tourneyMatches = {}; let tourneyCode = ""; let matchCounter = 0;
 let chatLocked = false; let repEnabled = true; let adminWatchingId = null;
-let bannedUsernames = []; // Kara Liste Özelliği
+let bannedUsernames = []; 
 
 function toggleChatLock() { chatLocked = document.getElementById('chat-lock-toggle').checked; }
 function toggleReport() { repEnabled = document.getElementById('report-toggle').checked; }
@@ -306,17 +366,21 @@ function hostTournament() {
 
 function handleTourneyDataHost(pId, c, data) {
     if(data.type === 'T_JOIN') {
+        if(data.version !== APP_VERSION) {
+            c.send({ type: 'T_ERROR', msg: dict[currentLang].version_err });
+            setTimeout(()=>c.close(), 500); return;
+        }
+
         let reqName = data.name.trim().toLowerCase();
-        // Kara Liste Kontrolü
         if(bannedUsernames.includes(reqName)) {
             c.send({ type: 'T_ERROR', msg: "Bu isim admin tarafından engellenmiştir (Kara Liste)." });
             setTimeout(()=>c.close(), 500); return;
         }
-        // İsim Çakışma Kontrolü
         let exists = Object.values(tourneyClients).some(cl => cl.name.toLowerCase() === reqName);
         if(exists) { c.send({ type: 'T_ERROR', msg: "Bu isim kullanımda, lütfen başka bir isim seçin." }); setTimeout(()=>c.close(), 500); return; }
         
         tourneyClients[pId] = { name: escapeHTML(data.name), score: 0, banned: false, conn: c };
+        c.send({ type: 'T_JOIN_OK' }); // İstemciye onay ver
         broadcastTourneyState(); updateSelects();
     }
     else if(data.type === 'T_CHAT') {
@@ -386,12 +450,15 @@ function broadcastMatchSync(mId) {
     if(adminWatchingId === mId) { board = m.board; myTurnInOnline = false; updateStatus(); }
 }
 function checkTourneyGameOver(b) { let s1=0, s2=0; for(let i=0;i<6;i++)s1+=b[i]; for(let i=7;i<13;i++)s2+=b[i]; return (s1===0&&s2===0); }
+
+// --- YENİ PUANLAMA MANTIĞI BURADA ---
 function processMatchFinish(mId) {
-    let m = tourneyMatches[mId]; m.status = 'finished'; let s1 = m.board[6], s2 = m.board[13];
+    let m = tourneyMatches[mId]; m.status = 'finished'; 
+    let s1 = m.board[6], s2 = m.board[13];
+    
     if(document.getElementById('tourney-system').value === 'points') {
-        if(s1 > s2) { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 3; }
-        else if(s2 > s1) { if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 3; }
-        else { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 1; if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 1; }
+        if(tourneyClients[m.p1]) tourneyClients[m.p1].score += s1;
+        if(tourneyClients[m.p2]) tourneyClients[m.p2].score += s2;
     } else {
         if(s1 > s2) { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 3; }
         else if(s2 > s1) { if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 3; }
@@ -477,6 +544,7 @@ function tKick(id) {
         let m = tourneyMatches[mId];
         if((m.p1 === id || m.p2 === id) && m.status !== 'finished') {
             let oId = m.p1 === id ? m.p2 : m.p1; m.status = 'finished';
+            // Yarıda kesilen maçta rakibe 25 Puan ver (Kazanmış sayılır)
             if(document.getElementById('tourney-system').value === 'points') { if(tourneyClients[oId]) tourneyClients[oId].score += 25; }
             else { if(tourneyClients[oId]) tourneyClients[oId].score += 3; }
         }
@@ -501,8 +569,8 @@ function joinTournament() {
     peer.on('open', () => {
         conn = peer.connect("trmng-" + c);
         conn.on('open', () => {
-            conn.send({ type: 'T_JOIN', name: myTourneyName });
-            showScreen('tourney-lobby-screen'); document.getElementById('tourney-client-status').innerText = "Bağlanıldı.";
+            // Sürüm numarası doğrulamak için gönderiliyor
+            conn.send({ type: 'T_JOIN', name: myTourneyName, version: APP_VERSION });
         });
         conn.on('data', handleTourneyDataClient);
         conn.on('error', () => showPopup("Hata", "Bulunamadı."));
@@ -510,7 +578,13 @@ function joinTournament() {
 }
 
 function handleTourneyDataClient(d) {
-    if(d.type === 'T_ERROR') { showPopup("Hata", d.msg, "Tamam", ()=>goHome()); }
+    if(d.type === 'T_ERROR') { 
+        showPopup("Hata", d.msg, "Tamam", ()=>goHome()); 
+    }
+    else if(d.type === 'T_JOIN_OK') {
+        showScreen('tourney-lobby-screen'); 
+        document.getElementById('tourney-client-status').innerText = "Bağlanıldı.";
+    }
     else if(d.type === 'T_STATE') {
         document.getElementById('tourney-standings').innerHTML = d.list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between;"><span>${p.name}</span><b style="color:var(--accent);">${p.score} P.</b></div>`).join('');
         document.getElementById('tourney-matches-client').innerHTML = d.matches.map(m => {
@@ -552,8 +626,12 @@ function cWatch(mId) {
 
 // Sohbet İşlemleri
 function broadcastTourneyChat(pId, s, msg) {
+    // --- BASIC AI CHECK ---
+    let isThreat = detectThreat(msg); // Mesaj sansürlenmeden Orijinal içeriğinden tehdit aranır.
+    
     let msgId = 'msg_' + Math.random().toString(36).substr(2, 9);
-    let mO = { type: 'T_CHAT', id: msgId, peerId: pId, sender: s, msg: censorText(msg) };
+    let mO = { type: 'T_CHAT', id: msgId, peerId: pId, sender: s, msg: censorText(msg), isThreat: isThreat };
+    
     appendChatToAdmin(mO); Object.values(tourneyClients).forEach(c => c.conn.send(mO));
 }
 function sendTourneyChat(role) {
@@ -564,7 +642,12 @@ function sendTourneyChat(role) {
 function appendChatToAdmin(mO) {
     let ab = document.getElementById('tourney-chat-admin');
     let act = mO.peerId !== 'admin' ? `<button class="chat-action-btn del" onclick="tDeleteMsg('${mO.id}')">Sil</button><button class="chat-action-btn warn" onclick="tBan('${mO.peerId}')">Ban</button>` : '';
-    ab.innerHTML += `<div class="chat-msg" id="admin-${mO.id}"><b>${mO.sender}:</b> ${mO.msg}<div class="chat-actions">${act}</div></div>`;
+    
+    // AI Tehdit görselleştirmesi
+    let threatWarning = mO.isThreat ? `<div style="color:#e74c3c; font-size:0.75rem; margin-bottom:4px; font-weight:bold;">⚠️ Sistem (AI) Tehdit Algıladı</div>` : '';
+    let reportClass = mO.isThreat ? 'reported-msg' : '';
+
+    ab.innerHTML += `<div class="chat-msg ${reportClass}" id="admin-${mO.id}">${threatWarning}<b>${mO.sender}:</b> ${mO.msg}<div class="chat-actions">${act}</div></div>`;
     ab.scrollTop = ab.scrollHeight;
 }
 function appendChatToClient(mO) {
