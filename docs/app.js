@@ -4,27 +4,33 @@ const dict = {
         title: "Mangala", subtitle: "Geleneksel Türk Strateji Oyunu",
         btn_local: "Yerel Çok Oyunculu", btn_bot: "Bilgisayara Karşı", btn_online: "Aynı Ağda Oyna (WiFi)", btn_tournament: "Turnuva Modu",
         bot_title: "Zorluk Seçin", bot_easy: "Kolay", bot_medium: "Orta", bot_hard: "Zor", btn_back: "Geri",
-        online_title: "Çevrimiçi / WiFi", network_warn: "Uyarı: Sabit bir WiFi ağına bağlı olun (Mobil Hotspot önermiyoruz).",
-        waiting_conn: "Bağlantı bekleniyor...", btn_host: "Oda Kur", btn_join: "Odaya Katıl",
+        online_title: "Çevrimiçi / WiFi", waiting_conn: "Bağlantı bekleniyor...", btn_host: "Oda Kur", btn_join: "Odaya Katıl",
         tourney_title: "Turnuva Modu", btn_host_tourney: "Turnuva Kur (Admin)", btn_join_tourney: "Turnuvaya Katıl",
-        opt_points: "Puan Sistemi", opt_knockout: "Eleme Usulü", tourney_lobby: "Turnuva Lobisi",
-        btn_menu: "Menü", win_p1: "Oyuncu 1 Kazandı!", win_p2: "Oyuncu 2 Kazandı!", draw: "Berabere!",
-        win_you: "Tebrikler, Kazandın!", win_opp: "Rakip Kazandı!", win_bot: "Bot Kazandı!",
+        tourney_lobby: "Turnuva Lobisi", btn_menu: "Menü / Çık",
+        win_p1: "Oyuncu 1 Kazandı!", win_p2: "Oyuncu 2 Kazandı!", draw: "Berabere!",
+        win_you: "Kazandın!", win_opp: "Rakip Kazandı!", win_bot: "Bot Kazandı!",
         turn_you: "Senin Sıran", turn_wait: "Sıra Bekleniyor...", turn_bot: "Bot Düşünüyor...",
-        kicked: "Turnuvadan atıldınız.", chat_banned: "Sohbetten banlandınız."
+        kicked: "Turnuvadan atıldınız.", chat_banned: "Sohbetten banlandınız.",
+        tab_players: "Oyuncular", tab_matches: "Maçlar", tab_settings: "Ayarlar", chat: "Sohbet",
+        create_match: "Yeni Eşleşme Yarat", btn_add: "Ekle", btn_end_tourney: "Turnuvayı Bitir", active_matches: "Aktif Maçlar",
+        btn_undo: "Geri(Undo)", btn_redo: "İleri(Redo)", btn_restart: "Baştan", btn_end_match: "Bitir",
+        spectator_mode: "İzleyici Modu", btn_close_room: "Odayı Kapat"
     },
     en: {
         title: "Mangala", subtitle: "Traditional Strategy Game",
         btn_local: "Local Multiplayer", btn_bot: "Play vs Bot", btn_online: "Play on WiFi", btn_tournament: "Tournament Mode",
         bot_title: "Select Difficulty", bot_easy: "Easy", bot_medium: "Medium", bot_hard: "Hard", btn_back: "Back",
-        online_title: "Online / WiFi", network_warn: "Warning: Ensure you are on a stable WiFi (Mobile Hotspots not recommended).",
-        waiting_conn: "Waiting for connection...", btn_host: "Host Game", btn_join: "Join Game",
+        online_title: "Online / WiFi", waiting_conn: "Waiting...", btn_host: "Host Game", btn_join: "Join Game",
         tourney_title: "Tournament Mode", btn_host_tourney: "Host Tournament", btn_join_tourney: "Join Tournament",
-        opt_points: "Points System", opt_knockout: "Knockout System", tourney_lobby: "Tournament Lobby",
-        btn_menu: "Menu", win_p1: "Player 1 Wins!", win_p2: "Player 2 Wins!", draw: "It's a Draw!",
-        win_you: "Congratulations, You Win!", win_opp: "Opponent Wins!", win_bot: "Bot Wins!",
-        turn_you: "Your Turn", turn_wait: "Waiting for Turn...", turn_bot: "Bot is Thinking...",
-        kicked: "You were kicked.", chat_banned: "You are banned from chat."
+        tourney_lobby: "Tournament Lobby", btn_menu: "Menu / Leave",
+        win_p1: "P1 Wins!", win_p2: "P2 Wins!", draw: "Draw!",
+        win_you: "You Win!", win_opp: "Opponent Wins!", win_bot: "Bot Wins!",
+        turn_you: "Your Turn", turn_wait: "Waiting...", turn_bot: "Bot Thinking...",
+        kicked: "You were kicked.", chat_banned: "You are banned from chat.",
+        tab_players: "Players", tab_matches: "Matches", tab_settings: "Settings", chat: "Chat",
+        create_match: "Create Match", btn_add: "Add", btn_end_tourney: "End Tournament", active_matches: "Active Matches",
+        btn_undo: "Undo", btn_redo: "Redo", btn_restart: "Restart", btn_end_match: "End Early",
+        spectator_mode: "Spectator Mode", btn_close_room: "Close Room"
     }
 };
 
@@ -37,12 +43,17 @@ function toggleLanguage() {
     });
 }
 
-// --- POPUP SİSTEMİ ---
+// --- POPUP ---
 let popupCallback = null;
-function showPopup(title, message, btnText = "Tamam", callback = null) {
+function showPopup(title, message, btnText = "Tamam", callback = null, rankingsHtml = "") {
     document.getElementById('popup-title').innerText = title;
     document.getElementById('popup-message').innerText = message;
     document.getElementById('popup-btn').innerText = btnText;
+    
+    let rEl = document.getElementById('popup-rankings');
+    if(rankingsHtml) { rEl.style.display = 'block'; rEl.innerHTML = rankingsHtml; }
+    else { rEl.style.display = 'none'; rEl.innerHTML = ""; }
+
     document.getElementById('popup-overlay').classList.add('active');
     popupCallback = callback;
 }
@@ -53,214 +64,164 @@ function closePopup() {
 
 // --- GÜVENLİK (XSS ve KÜFÜR FİLTRESİ) ---
 const badWords = ["fuck", "shit", "bitch", "asshole", "cunt", "amk", "oç", "orospu", "siktir", "piç", "yarrak", "yavşak", "pezevenk", "aq", "sg"];
-function escapeHTML(str) {
-    return str.replace(/[&<>'"]/g, tag => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-    }[tag] || tag));
-}
+function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)); }
 function censorText(text) {
     let safeText = escapeHTML(text);
     let regex = new RegExp("\\b(" + badWords.join("|") + ")\\b", "gi");
     return safeText.replace(regex, "***");
 }
 
-// --- OYUN DEĞİŞKENLERİ ---
-let board = Array(14).fill(4); 
-board[6] = 0; board[13] = 0;
-let currentPlayer = 1; 
-let gameMode = 'local'; // local, bot, online, tourney
-let botDifficulty = 'easy'; 
-let isGameActive = false;
-
-// --- AĞ (PeerJS) DEĞİŞKENLERİ ---
-let peer = null;
-let conn = null; // 1v1
-let isHost = false;
-let myTurnInOnline = false;
-
-// --- EKRAN YÖNETİMİ ---
+// --- EKRAN YÖNETİMİ & TABLAR ---
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
 }
+function switchAdminTab(tabId) {
+    document.querySelectorAll('#tourney-host-screen .tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#tourney-host-screen .tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+function switchClientTab(tabId) {
+    document.querySelectorAll('#tourney-lobby-screen .tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#tourney-lobby-screen .tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+
 function showBotMenu() { showScreen('bot-menu-screen'); }
 function showOnlineMenu() { showScreen('online-menu-screen'); }
 function showTournamentMenu() { showScreen('tournament-menu-screen'); }
+
 function goHome() { 
-    isGameActive = false;
+    isGameActive = false; isSpectating = false; adminWatchingId = null;
     if(conn) { conn.close(); conn = null; }
     if(peer) { peer.destroy(); peer = null; }
     Object.values(tourneyClients).forEach(c => c.conn.close());
-    tourneyClients = {};
+    tourneyClients = {}; tourneyMatches = {};
     showScreen('menu-screen'); 
 }
-
-// --- CORE MANGALA MANTIĞI ---
-function getNextIndex(curr, player) {
-    if (player === 1) {
-        if (curr === 5) return 6; 
-        if (curr === 6) return 7; 
-        if (curr === 12) return 0; 
+function leaveMatchScreen() {
+    if(gameMode === 'tourney') {
+        if(isHost) {
+            adminWatchingId = null;
+            document.getElementById('admin-controls').style.display = 'none';
+            showScreen('tourney-host-screen');
+        } else {
+            if(isSpectating && conn) conn.send({type: 'T_UNWATCH', mId: myTourneyMatchId});
+            isSpectating = false;
+            showScreen('tourney-lobby-screen');
+        }
     } else {
-        if (curr === 5) return 7; 
-        if (curr === 12) return 13; 
-        if (curr === 13) return 0; 
+        goHome();
     }
+}
+
+// --- OYUN DEĞİŞKENLERİ ---
+let board = Array(14).fill(4); board[6] = 0; board[13] = 0;
+let currentPlayer = 1; 
+let gameMode = 'local'; 
+let botDifficulty = 'easy'; 
+let isGameActive = false;
+
+// --- AĞ (PeerJS) DEĞİŞKENLERİ ---
+let peer = null; let conn = null; 
+let isHost = false; let myTurnInOnline = false;
+
+// --- MANGALA MOTORU ---
+function getNextIndex(curr, p) {
+    if (p === 1) { if(curr === 5) return 6; if(curr === 6) return 7; if(curr === 12) return 0; }
+    else { if(curr === 5) return 7; if(curr === 12) return 13; if(curr === 13) return 0; }
     return curr + 1;
 }
+function executeMove(tb, p, idx) {
+    let s = tb[idx]; if (s === 0) return { board: tb, extraTurn: false };
+    tb[idx] = 0; let c = idx;
+    if (s === 1) { c = getNextIndex(c, p); tb[c]++; } 
+    else { tb[idx] = 1; s--; while (s > 0) { c = getNextIndex(c, p); tb[c]++; s--; } }
 
-function executeMove(tempBoard, player, pitIndex) {
-    let stones = tempBoard[pitIndex];
-    if (stones === 0) return { board: tempBoard, extraTurn: false };
-    tempBoard[pitIndex] = 0;
-    let curr = pitIndex;
-
-    if (stones === 1) {
-        curr = getNextIndex(curr, player);
-        tempBoard[curr]++;
-    } else {
-        tempBoard[pitIndex] = 1;
-        stones--;
-        while (stones > 0) {
-            curr = getNextIndex(curr, player);
-            tempBoard[curr]++;
-            stones--;
-        }
+    let ex = false;
+    if ((p===1 && c===6) || (p===2 && c===13)) ex = true;
+    else if ((p===1 && c>=7 && c<=12) || (p===2 && c>=0 && c<=5)) { if (tb[c]%2 === 0) { if(p===1) tb[6]+=tb[c]; else tb[13]+=tb[c]; tb[c]=0; } }
+    else if ((p===1 && c>=0 && c<=5) || (p===2 && c>=7 && c<=12)) {
+        if (tb[c] === 1) { let o = 12 - c; if (tb[o] > 0) { let t = tb[c]+tb[o]; if(p===1) tb[6]+=t; else tb[13]+=t; tb[c]=0; tb[o]=0; } }
     }
-
-    let extraTurn = false;
-    if ((player === 1 && curr === 6) || (player === 2 && curr === 13)) {
-        extraTurn = true;
-    } else if ((player === 1 && curr >= 7 && curr <= 12) || (player === 2 && curr >= 0 && curr <= 5)) {
-        if (tempBoard[curr] % 2 === 0) {
-            if (player === 1) tempBoard[6] += tempBoard[curr];
-            else tempBoard[13] += tempBoard[curr];
-            tempBoard[curr] = 0;
-        }
-    } else if ((player === 1 && curr >= 0 && curr <= 5) || (player === 2 && curr >= 7 && curr <= 12)) {
-        if (tempBoard[curr] === 1) { 
-            let opp = 12 - curr; 
-            if (tempBoard[opp] > 0) { 
-                let total = tempBoard[curr] + tempBoard[opp];
-                if (player === 1) tempBoard[6] += total;
-                else tempBoard[13] += total;
-                tempBoard[curr] = 0;
-                tempBoard[opp] = 0;
-            }
-        }
-    }
-
-    let p1Sum = 0, p2Sum = 0;
-    for (let i = 0; i <= 5; i++) p1Sum += tempBoard[i];
-    for (let i = 7; i <= 12; i++) p2Sum += tempBoard[i];
-
-    if (p1Sum === 0 && p2Sum > 0) {
-        tempBoard[6] += p2Sum; 
-        for (let i = 7; i <= 12; i++) tempBoard[i] = 0;
-    } else if (p2Sum === 0 && p1Sum > 0) {
-        tempBoard[13] += p1Sum; 
-        for (let i = 0; i <= 5; i++) tempBoard[i] = 0;
-    }
-
-    return { board: tempBoard, extraTurn: extraTurn };
+    let s1=0, s2=0; for(let i=0;i<=5;i++) s1+=tb[i]; for(let i=7;i<=12;i++) s2+=tb[i];
+    if (s1===0 && s2>0) { tb[6]+=s2; for(let i=7;i<=12;i++) tb[i]=0; } 
+    else if (s2===0 && s1>0) { tb[13]+=s1; for(let i=0;i<=5;i++) tb[i]=0; }
+    return { board: tb, extraTurn: ex };
 }
 
-// --- OYUN ARAYÜZÜ (GÖRSEL) ---
+// --- GÖRSEL ARAYÜZ (BOARD) ---
+let isSpectating = false;
 function startGame(mode, difficulty = 'easy') {
-    gameMode = mode; botDifficulty = difficulty; isGameActive = true; currentPlayer = 1;
+    gameMode = mode; botDifficulty = difficulty; isGameActive = true; currentPlayer = 1; isSpectating = false;
     board = Array(14).fill(4); board[6] = 0; board[13] = 0;
     
-    let p1N = dict[currentLang].turn_you.split(' ')[0]; // "Sen" vs "You"
-    let p2N = "Opponent";
+    let d = dict[currentLang];
+    let p1N = d.turn_you.split(' ')[0], p2N = "Opponent";
     if(mode === 'local') { p1N = "P1"; p2N = "P2"; }
     else if(mode === 'bot') { p1N = "You"; p2N = "Bot"; }
     else if(mode === 'online') { p1N = isHost?"You":"Opp"; p2N = isHost?"Opp":"You"; myTurnInOnline = isHost; }
     
-    document.getElementById('p1-name').innerText = p1N;
-    document.getElementById('p2-name').innerText = p2N;
+    document.getElementById('p1-name').innerText = p1N; document.getElementById('p2-name').innerText = p2N;
+    document.getElementById('btn-close-room').style.display = (mode === 'online' && isHost) ? 'inline-block' : 'none';
+    document.getElementById('spectator-label').style.display = 'none';
     
     renderBoard(); updateStatus(); showScreen('game-screen');
 }
 
 function renderBoard() {
-    const rowP1 = document.getElementById('row-p1'), rowP2 = document.getElementById('row-p2');
-    rowP1.innerHTML = ''; rowP2.innerHTML = '';
-
-    for (let i = 12; i >= 7; i--) rowP2.appendChild(createPit(i, 2));
-    for (let i = 0; i <= 5; i++) rowP1.appendChild(createPit(i, 1));
-
-    document.getElementById('store-p1').innerText = board[6];
-    document.getElementById('store-p2').innerText = board[13];
+    const r1 = document.getElementById('row-p1'), r2 = document.getElementById('row-p2');
+    r1.innerHTML = ''; r2.innerHTML = '';
+    for (let i = 12; i >= 7; i--) r2.appendChild(createPit(i, 2));
+    for (let i = 0; i <= 5; i++) r1.appendChild(createPit(i, 1));
+    document.getElementById('store-p1').innerText = board[6]; document.getElementById('store-p2').innerText = board[13];
 }
 
-function createPit(index, owner) {
-    const div = document.createElement('div');
-    div.classList.add('pit'); div.innerText = board[index];
-    
-    if (isGameActive && board[index] > 0) {
+function createPit(idx, owner) {
+    const div = document.createElement('div'); div.classList.add('pit'); div.innerText = board[idx];
+    if (isGameActive && board[idx] > 0 && !isSpectating) {
         let canPlay = false;
         if (gameMode === 'local' && currentPlayer === owner) canPlay = true;
         if (gameMode === 'bot' && currentPlayer === 1 && owner === 1) canPlay = true;
         if (gameMode === 'online' && myTurnInOnline && owner === (isHost ? 1 : 2)) canPlay = true;
-        if (gameMode === 'tourney' && myTurnInOnline && owner === (amIPlayer1 ? 1 : 2)) canPlay = true;
+        if (gameMode === 'tourney' && myTurnInOnline && owner === (amIPlayer1 ? 1 : 2) && adminWatchingId === null) canPlay = true;
 
         if(canPlay) {
             div.classList.add('playable');
             div.onclick = () => {
-                if(gameMode === 'tourney') {
-                    sendTourneyMove(index);
-                } else if(gameMode === 'online') {
-                    handleMove(index); sendMove(index);
-                } else {
-                    handleMove(index);
-                }
+                if(gameMode === 'tourney') sendTourneyMove(idx);
+                else if(gameMode === 'online') { handleMove(idx); sendMove(idx); } 
+                else handleMove(idx);
             };
         }
     } else { div.classList.add('disabled'); }
     return div;
 }
 
-function handleMove(index) {
+function handleMove(idx) {
     if (!isGameActive) return;
-    let result = executeMove(board, currentPlayer, index);
-    board = result.board;
-    renderBoard();
-
+    let res = executeMove(board, currentPlayer, idx); board = res.board; renderBoard();
     if (checkGameOver()) return;
-    if (!result.extraTurn) {
-        currentPlayer = currentPlayer === 1 ? 2 : 1;
-        if (gameMode === 'online') myTurnInOnline = (currentPlayer === (isHost ? 1 : 2));
-    }
+    if (!res.extraTurn) { currentPlayer = currentPlayer === 1 ? 2 : 1; if (gameMode === 'online') myTurnInOnline = (currentPlayer === (isHost ? 1 : 2)); }
     updateStatus();
-
-    if (gameMode === 'bot' && currentPlayer === 2 && isGameActive) {
-        setTimeout(playBotMove, 800);
-    }
+    if (gameMode === 'bot' && currentPlayer === 2 && isGameActive) setTimeout(playBotMove, 800);
 }
 
 function checkGameOver() {
-    let p1Sum = 0; for(let i=0;i<6;i++) p1Sum += board[i];
-    let p2Sum = 0; for(let i=7;i<13;i++) p2Sum += board[i];
-
-    if (p1Sum === 0 && p2Sum === 0) {
-        isGameActive = false;
-        let p1Score = board[6], p2Score = board[13];
-        let d = dict[currentLang];
-        let msg = p1Score > p2Score ? d.win_p1 : (p2Score > p1Score ? d.win_p2 : d.draw);
-        
-        if(gameMode === 'bot') msg = p1Score > p2Score ? d.win_you : (p2Score > p1Score ? d.win_bot : d.draw);
-        if(gameMode === 'online' || gameMode === 'tourney') {
-            let amIP1 = (gameMode === 'online') ? isHost : amIPlayer1;
-            let myScore = amIP1 ? p1Score : p2Score;
-            let oppScore = amIP1 ? p2Score : p1Score;
-            msg = myScore > oppScore ? d.win_you : (oppScore > myScore ? d.win_opp : d.draw);
+    let s1 = 0, s2 = 0; for(let i=0;i<6;i++) s1+=board[i]; for(let i=7;i<13;i++) s2+=board[i];
+    if (s1 === 0 && s2 === 0) {
+        isGameActive = false; let p1 = board[6], p2 = board[13]; let d = dict[currentLang];
+        let msg = p1 > p2 ? d.win_p1 : (p2 > p1 ? d.win_p2 : d.draw);
+        if(gameMode === 'bot') msg = p1 > p2 ? d.win_you : (p2 > p1 ? d.win_bot : d.draw);
+        if(gameMode === 'online' || (gameMode === 'tourney' && !isSpectating && !adminWatchingId)) {
+            let a = (gameMode === 'online') ? isHost : amIPlayer1;
+            let mS = a ? p1 : p2, oS = a ? p2 : p1;
+            msg = mS > oS ? d.win_you : (oS > mS ? d.win_opp : d.draw);
         }
-        
         renderBoard();
-        showPopup("Oyun Bitti", `${msg}\n( ${p1Score} - ${p2Score} )`, "Tamam", () => {
-            if(gameMode === 'tourney') showScreen('tourney-lobby-screen');
-            else goHome();
-        });
+        showPopup("Oyun Bitti", `${msg}\n( ${p1} - ${p2} )`, "Tamam", () => leaveMatchScreen());
         return true;
     }
     return false;
@@ -268,334 +229,348 @@ function checkGameOver() {
 
 function updateStatus() {
     if (!isGameActive) return;
-    const st = document.getElementById('status-text');
-    let d = dict[currentLang];
-    if (gameMode === 'local') st.innerText = currentPlayer === 1 ? "P1 Sırası" : "P2 Sırası";
+    const st = document.getElementById('status-text'); let d = dict[currentLang];
+    if(isSpectating || adminWatchingId) st.innerText = d.spectator_mode;
+    else if (gameMode === 'local') st.innerText = currentPlayer === 1 ? "P1" : "P2";
     else if (gameMode === 'bot') st.innerText = currentPlayer === 1 ? d.turn_you : d.turn_bot;
     else if (gameMode === 'online' || gameMode === 'tourney') st.innerText = myTurnInOnline ? d.turn_you : d.turn_wait;
     renderBoard();
 }
 
-// --- BOT ---
 function playBotMove() {
-    let validMoves = [];
-    for (let i = 7; i <= 12; i++) { if (board[i] > 0) validMoves.push(i); }
-    if (validMoves.length === 0) return;
-
-    let bestMove = validMoves[0];
-    if (botDifficulty === 'easy') {
-        bestMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-    } else {
-        let found = false;
-        for (let move of validMoves) {
-            let res = executeMove([...board], 2, move);
-            if (res.extraTurn || res.board[13] > board[13] + 1) { bestMove = move; found = true; break; }
-        }
-        if(!found) bestMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+    let v = []; for (let i = 7; i <= 12; i++) { if (board[i] > 0) v.push(i); }
+    if (v.length === 0) return; let bM = v[0];
+    if (botDifficulty === 'easy') bM = v[Math.floor(Math.random() * v.length)];
+    else {
+        let f = false;
+        for (let m of v) { let r = executeMove([...board], 2, m); if (r.extraTurn || r.board[13] > board[13] + 1) { bM = m; f = true; break; } }
+        if(!f) bM = v[Math.floor(Math.random() * v.length)];
     }
-    handleMove(bestMove);
+    handleMove(bM);
 }
 
-// --- 1V1 ONLINE (PeerJS) ---
+// --- 1V1 ONLINE ---
 function generateCode() { return Math.floor(10000 + Math.random() * 90000).toString(); }
-
 function hostGame() {
-    let code = generateCode();
-    peer = new Peer("mngltrk-" + code);
-    peer.on('open', () => {
-        document.getElementById('online-status').innerText = `Oda: ${code}\nBekleniyor...`;
-        isHost = true;
-    });
-    peer.on('connection', (c) => {
-        conn = c;
-        setupConnection();
-    });
+    let c = generateCode(); peer = new Peer("mngltrk-" + c);
+    peer.on('open', () => { document.getElementById('online-status').innerText = `Oda: ${c}\nBekleniyor...`; isHost = true; });
+    peer.on('connection', (cn) => { conn = cn; setupConn(); });
 }
-
 function joinGame() {
-    let code = document.getElementById('join-id').value.trim();
-    if (code.length < 5) return showPopup("Hata", "Geçerli kod girin.");
-    
+    let c = document.getElementById('join-id').value.trim(); if (c.length < 5) return showPopup("Hata", "Kod girin.");
     document.getElementById('online-status').innerText = "Bağlanılıyor...";
     peer = new Peer();
-    peer.on('open', () => {
-        isHost = false;
-        conn = peer.connect("mngltrk-" + code);
-        conn.on('open', setupConnection);
-        conn.on('error', () => showPopup("Hata", "Bağlantı kurulamadı."));
-    });
+    peer.on('open', () => { isHost = false; conn = peer.connect("mngltrk-" + c); conn.on('open', setupConn); conn.on('error', () => showPopup("Hata", "Bulunamadı.")); });
 }
-
-function setupConnection() {
-    showPopup("Başarılı", "Bağlantı kuruldu, oyun başlıyor.");
-    conn.on('data', (data) => {
-        if (data.type === 'MOVE') {
-            handleMove(data.index);
-        }
+function setupConn() {
+    showPopup("Başarılı", "Oyun başlıyor.");
+    conn.on('data', (d) => { 
+        if (d.type === 'MOVE') handleMove(d.index); 
+        else if (d.type === 'ROOM_CLOSED') { showPopup("Uyarı", "Oda sahibi odayı kapattı.", "Tamam", ()=>goHome()); }
     });
     setTimeout(() => startGame('online'), 1000);
 }
-function sendMove(index) { if (conn && conn.open) conn.send({ type: 'MOVE', index: index }); }
+function sendMove(idx) { if (conn && conn.open) conn.send({ type: 'MOVE', index: idx }); }
+function closeWiFiRoom() { if(conn && conn.open) conn.send({type:'ROOM_CLOSED'}); goHome(); }
 
+// ==========================================
+// --- TURNUVA SİSTEMİ (HOST / ADMIN) ---
+// ==========================================
+let tourneyClients = {}; // id: {name, score, banned, conn}
+let tourneyMatches = {}; // mId: {p1, p2, status, board, turn, history, redo, spectators}
+let tourneyCode = ""; let matchCounter = 0;
+let chatLocked = false; let repEnabled = true;
+let adminWatchingId = null;
 
-// --- TURNUVA SİSTEMİ (HOST / ADMIN LOGIC) ---
-let tourneyClients = {}; // { peerId: { name, score, matches, banned, conn } }
-let tourneyMatches = {}; // { matchId: { p1, p2, board, turn, active } }
-let tourneyCode = "";
-let matchCounter = 0;
+function toggleChatLock() { chatLocked = document.getElementById('chat-lock-toggle').checked; }
+function toggleReport() { repEnabled = document.getElementById('report-toggle').checked; }
+function updateTourneySystem() { renderAdminMatches(); }
 
-// YENİ EKLENEN: Kod üreterek turnuvayı hostlama
 function hostTournament() {
-    tourneyCode = generateCode();
-    peer = new Peer("trmng-" + tourneyCode);
-    peer.on('open', () => {
-        document.getElementById('tourney-host-code').innerText = "Kod: " + tourneyCode;
-        showScreen('tourney-host-screen');
-        isHost = true;
-    });
-    peer.on('connection', c => {
-        c.on('data', data => handleTourneyDataHost(c.peer, c, data));
-    });
+    tourneyCode = generateCode(); peer = new Peer("trmng-" + tourneyCode);
+    peer.on('open', () => { document.getElementById('tourney-host-code').innerText = "Kod: " + tourneyCode; showScreen('tourney-host-screen'); isHost = true; });
+    peer.on('connection', c => { c.on('data', d => handleTourneyDataHost(c.peer, c, d)); });
 }
 
-function startTournament() {
-    let pIds = Object.keys(tourneyClients);
-    if(pIds.length < 2) return showPopup("Hata", "En az 2 oyuncu gerekli.");
-    
-    // Basit rastgele eşleştirme (Şimdilik ilk 2'yi eşleştir)
-    let p1 = pIds[0]; let p2 = pIds[1];
+function handleTourneyDataHost(pId, c, data) {
+    if(data.type === 'T_JOIN') {
+        let exists = Object.values(tourneyClients).some(cl => cl.name.toLowerCase() === data.name.toLowerCase());
+        if(exists) { c.send({ type: 'T_ERROR', msg: "Bu isim kullanımda." }); setTimeout(()=>c.close(), 500); return; }
+        tourneyClients[pId] = { name: escapeHTML(data.name), score: 0, banned: false, conn: c };
+        broadcastTourneyState(); updateSelects();
+    }
+    else if(data.type === 'T_CHAT') {
+        if(tourneyClients[pId].banned) { c.send({ type: 'T_BANNED_WARN' }); return; }
+        if(chatLocked) { c.send({ type: 'T_ERROR', msg: "Sohbet admin tarafından kilitlendi." }); return; }
+        broadcastTourneyChat(pId, tourneyClients[pId].name, data.msg);
+    }
+    else if(data.type === 'T_REPORT') {
+        if(!repEnabled) return;
+        showPopup("Rapor", `${tourneyClients[pId].name}, bildirdi: ${data.sender}`);
+        let el = document.getElementById(`admin-${data.msgId}`); if(el) el.classList.add('reported-msg');
+    }
+    else if(data.type === 'T_MOVE') { handleHostTourneyMove(data.mId, pId, data.index); }
+    else if(data.type === 'T_WATCH') { 
+        if(tourneyMatches[data.mId]) tourneyMatches[data.mId].spectators.push(pId);
+        c.send({ type: 'T_BOARD_SYNC', board: tourneyMatches[data.mId].board, turn: tourneyMatches[data.mId].turn });
+    }
+    else if(data.type === 'T_UNWATCH') {
+        let m = tourneyMatches[data.mId];
+        if(m) m.spectators = m.spectators.filter(id => id !== pId);
+    }
+}
+
+// Admin Maç Yönetimi
+function updateSelects() {
+    let opts = Object.keys(tourneyClients).map(id => `<option value="${id}">${tourneyClients[id].name}</option>`).join('');
+    document.getElementById('sel-p1').innerHTML = opts; document.getElementById('sel-p2').innerHTML = opts;
+}
+function adminCreateMatch() {
+    let p1 = document.getElementById('sel-p1').value, p2 = document.getElementById('sel-p2').value;
+    if(p1 === p2 || !p1 || !p2) return showPopup("Hata", "Geçerli iki farklı oyuncu seçin.");
     let mId = "M" + (++matchCounter);
-    
-    tourneyMatches[mId] = {
-        p1: p1, p2: p2, turn: 1, active: true,
-        board: [4,4,4,4,4,4, 0, 4,4,4,4,4,4, 0]
-    };
-    
-    tourneyClients[p1].conn.send({ type: 'T_START_GAME', mId: mId, isP1: true, oppName: tourneyClients[p2].name });
-    tourneyClients[p2].conn.send({ type: 'T_START_GAME', mId: mId, isP1: false, oppName: tourneyClients[p1].name });
-    
-    showPopup("Bilgi", "Müsabaka başlatıldı.");
-    broadcastTourneyState();
+    tourneyMatches[mId] = { p1: p1, p2: p2, status: 'pending', board: [4,4,4,4,4,4,0,4,4,4,4,4,4,0], turn: 1, history: [], redo: [], spectators: [] };
+    renderAdminMatches(); broadcastTourneyState();
+}
+function aStartMatch(mId) {
+    let m = tourneyMatches[mId]; if(!m || !tourneyClients[m.p1] || !tourneyClients[m.p2]) return;
+    m.status = 'active'; m.board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0]; m.turn = 1; m.history = []; m.redo = [];
+    tourneyClients[m.p1].conn.send({ type: 'T_START_GAME', mId: mId, isP1: true, oppName: tourneyClients[m.p2].name });
+    tourneyClients[m.p2].conn.send({ type: 'T_START_GAME', mId: mId, isP1: false, oppName: tourneyClients[m.p1].name });
+    renderAdminMatches(); broadcastTourneyState();
+}
+function aCancelMatch(mId) { delete tourneyMatches[mId]; renderAdminMatches(); broadcastTourneyState(); }
+function aForceWin(mId, winnerNum) {
+    let m = tourneyMatches[mId];
+    if(document.getElementById('tourney-system').value === 'points') return; // Knockout only
+    let winnerId = winnerNum === 1 ? m.p1 : m.p2;
+    if(tourneyClients[winnerId]) tourneyClients[winnerId].score += 3;
+    m.status = 'finished'; renderAdminMatches(); broadcastTourneyState();
 }
 
-function handleHostTourneyMove(mId, peerId, index) {
-    let match = tourneyMatches[mId];
-    if(!match || !match.active) return;
-    
-    let isP1 = (match.p1 === peerId);
-    let playerNum = isP1 ? 1 : 2;
-    if(match.turn !== playerNum) return; 
+// Admin Board Logic
+function handleHostTourneyMove(mId, pId, idx) {
+    let m = tourneyMatches[mId]; if(!m || m.status !== 'active') return;
+    let isP1 = (m.p1 === pId); let pN = isP1 ? 1 : 2; if(m.turn !== pN) return; 
 
-    let res = executeMove(match.board, playerNum, index);
-    match.board = res.board;
-    let gameOver = checkTourneyGameOver(match.board);
+    // Undo için kaydet
+    m.history.push({ board: [...m.board], turn: m.turn }); m.redo = [];
+
+    let res = executeMove(m.board, pN, idx); m.board = res.board;
+    let over = checkTourneyGameOver(m.board);
+    if(!res.extraTurn && !over) m.turn = m.turn === 1 ? 2 : 1;
+
+    broadcastMatchSync(mId);
+
+    if(over) processMatchFinish(mId);
+}
+
+function broadcastMatchSync(mId) {
+    let m = tourneyMatches[mId];
+    let pkt = { type: 'T_BOARD_SYNC', board: m.board, turn: m.turn };
+    if(tourneyClients[m.p1]) tourneyClients[m.p1].conn.send(pkt);
+    if(tourneyClients[m.p2]) tourneyClients[m.p2].conn.send(pkt);
+    m.spectators.forEach(sId => { if(tourneyClients[sId]) tourneyClients[sId].conn.send(pkt); });
     
-    if(!res.extraTurn && !gameOver) {
-        match.turn = match.turn === 1 ? 2 : 1;
+    if(adminWatchingId === mId) { board = m.board; myTurnInOnline = false; updateStatus(); }
+}
+
+function checkTourneyGameOver(b) { let s1=0, s2=0; for(let i=0;i<6;i++)s1+=b[i]; for(let i=7;i<13;i++)s2+=b[i]; return (s1===0&&s2===0); }
+
+function processMatchFinish(mId) {
+    let m = tourneyMatches[mId]; m.status = 'finished';
+    let s1 = m.board[6], s2 = m.board[13];
+    if(document.getElementById('tourney-system').value === 'points') {
+        if(s1 > s2) { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 3; }
+        else if(s2 > s1) { if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 3; }
+        else { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 1; if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 1; }
+    } else {
+        if(s1 > s2) { if(tourneyClients[m.p1]) tourneyClients[m.p1].score += 3; }
+        else if(s2 > s1) { if(tourneyClients[m.p2]) tourneyClients[m.p2].score += 3; }
     }
-
-    let statePacket = { type: 'T_BOARD_SYNC', board: match.board, turn: match.turn };
-    tourneyClients[match.p1].conn.send(statePacket);
-    tourneyClients[match.p2].conn.send(statePacket);
-
-    if(gameOver) {
-        match.active = false;
-        let p1Score = match.board[6]; let p2Score = match.board[13];
-        if(p1Score > p2Score) tourneyClients[match.p1].score += 3;
-        else if(p2Score > p1Score) tourneyClients[match.p2].score += 3;
-        else { tourneyClients[match.p1].score += 1; tourneyClients[match.p2].score += 1; }
-        broadcastTourneyState();
-    }
+    renderAdminMatches(); broadcastTourneyState();
 }
 
-function checkTourneyGameOver(b) {
-    let s1 = 0, s2 = 0;
-    for(let i=0;i<6;i++) s1+=b[i];
-    for(let i=7;i<13;i++) s2+=b[i];
-    return (s1===0 && s2===0);
+// In-Game Admin Controls
+function aWatchMatch(mId) {
+    let m = tourneyMatches[mId]; adminWatchingId = mId; gameMode = 'tourney'; isGameActive = true;
+    board = m.board; currentPlayer = m.turn; isSpectating = false; myTurnInOnline = false;
+    document.getElementById('p1-name').innerText = tourneyClients[m.p1] ? tourneyClients[m.p1].name : "P1";
+    document.getElementById('p2-name').innerText = tourneyClients[m.p2] ? tourneyClients[m.p2].name : "P2";
+    document.getElementById('admin-controls').style.display = 'flex';
+    document.getElementById('spectator-label').style.display = 'block';
+    showScreen('game-screen'); updateStatus();
+}
+function aUndo() {
+    let m = tourneyMatches[adminWatchingId]; if(!m || m.history.length === 0) return;
+    let last = m.history.pop(); m.redo.push({board: [...m.board], turn: m.turn});
+    m.board = last.board; m.turn = last.turn; broadcastMatchSync(adminWatchingId);
+}
+function aRedo() {
+    let m = tourneyMatches[adminWatchingId]; if(!m || m.redo.length === 0) return;
+    let nxt = m.redo.pop(); m.history.push({board: [...m.board], turn: m.turn});
+    m.board = nxt.board; m.turn = nxt.turn; broadcastMatchSync(adminWatchingId);
+}
+function aRestart() {
+    let m = tourneyMatches[adminWatchingId]; if(!m) return;
+    m.board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0]; m.turn = 1; m.history = []; m.redo = [];
+    broadcastMatchSync(adminWatchingId);
+}
+function aEndEarly() {
+    let m = tourneyMatches[adminWatchingId]; if(!m) return;
+    // Puanlama sistemine mevcut tahta durumunu dahil et veya bitir.
+    m.board[6] += m.board.slice(0,6).reduce((a,b)=>a+b,0);
+    m.board[13] += m.board.slice(7,13).reduce((a,b)=>a+b,0);
+    for(let i=0;i<=5;i++) m.board[i]=0; for(let i=7;i<=12;i++) m.board[i]=0;
+    broadcastMatchSync(adminWatchingId); processMatchFinish(adminWatchingId); leaveMatchScreen();
 }
 
+function adminEndTournament() {
+    let list = Object.keys(tourneyClients).map(id => ({ name: tourneyClients[id].name, score: tourneyClients[id].score })).sort((a,b)=>b.score - a.score);
+    Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_TOURNEY_END', list: list }));
+    
+    let html = list.map((p,i)=>`<div>${i+1}. ${p.name} - ${p.score} Puan</div>`).join('');
+    showPopup("Turnuva Bitti", "Sonuçlar:", "Ana Menü", ()=>goHome(), html);
+}
+
+// Moderasyon (Ban / Kick)
 function broadcastTourneyState() {
-    let list = Object.keys(tourneyClients).map(id => ({
-        id: id, name: tourneyClients[id].name, score: tourneyClients[id].score, banned: tourneyClients[id].banned
-    }));
-    
-    let hList = document.getElementById('tourney-player-list');
-    hList.innerHTML = list.map(p => `
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <span>${p.name} (Puan: ${p.score})</span>
-            <div>
-                <span class="admin-action" onclick="tBan('${p.id}')">${p.banned?'Unban':'Ban'}</span>
-                <span class="admin-action" onclick="tKick('${p.id}')">At</span>
-            </div>
-        </div>
-    `).join('');
+    let list = Object.keys(tourneyClients).map(id => ({ id: id, name: tourneyClients[id].name, score: tourneyClients[id].score, banned: tourneyClients[id].banned })).sort((a,b)=>b.score - a.score);
+    let ml = Object.keys(tourneyMatches).map(mId => {
+        let m = tourneyMatches[mId]; return { id: mId, p1N: tourneyClients[m.p1]?.name, p2N: tourneyClients[m.p2]?.name, status: m.status };
+    });
 
-    Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_STATE', list: list }));
+    let hList = document.getElementById('tourney-player-list');
+    hList.innerHTML = list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>${p.name} (${p.score})</span>
+        <div><span class="chat-action-btn warn" onclick="tBan('${p.id}')">${p.banned?'Unban':'Ban'}</span><span class="chat-action-btn del" onclick="tKick('${p.id}')">Kick</span></div>
+    </div>`).join('');
+
+    Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_STATE', list: list, matches: ml }));
+}
+
+function renderAdminMatches() {
+    let sys = document.getElementById('tourney-system').value;
+    let html = Object.keys(tourneyMatches).map(mId => {
+        let m = tourneyMatches[mId]; let n1 = tourneyClients[m.p1]?.name; let n2 = tourneyClients[m.p2]?.name;
+        if(!n1 || !n2) return '';
+        let acts = "";
+        if(m.status === 'pending') {
+            acts += `<button class="chat-action-btn green" onclick="aStartMatch('${mId}')">Başlat</button>`;
+            if(sys === 'knockout') acts += `<button class="chat-action-btn" onclick="aForceWin('${mId}', 1)">P1 Win</button><button class="chat-action-btn" onclick="aForceWin('${mId}', 2)">P2 Win</button>`;
+            acts += `<button class="chat-action-btn del" onclick="aCancelMatch('${mId}')">İptal</button>`;
+        } else if(m.status === 'active') {
+            acts += `<button class="chat-action-btn" onclick="aWatchMatch('${mId}')">Yönet / İzle</button>`;
+        } else acts += `<span>(Bitti)</span>`;
+        return `<div class="match-item"><div><b>${n1}</b> vs <b>${n2}</b> - ${m.status}</div><div>${acts}</div></div>`;
+    }).join('');
+    document.getElementById('tourney-matches-admin').innerHTML = html;
 }
 
 function tKick(id) { 
     if(!tourneyClients[id]) return;
-    tourneyClients[id].conn.send({ type: 'T_KICKED' }); 
-    tourneyClients[id].conn.close(); 
-    delete tourneyClients[id]; 
-    broadcastTourneyState(); 
+    Object.keys(tourneyMatches).forEach(mId => {
+        let m = tourneyMatches[mId];
+        if((m.p1 === id || m.p2 === id) && m.status !== 'finished') {
+            let oId = m.p1 === id ? m.p2 : m.p1; m.status = 'finished';
+            if(document.getElementById('tourney-system').value === 'points') { if(tourneyClients[oId]) tourneyClients[oId].score += 25; }
+            else { if(tourneyClients[oId]) tourneyClients[oId].score += 3; }
+        }
+    });
+    tourneyClients[id].conn.send({ type: 'T_KICKED' }); tourneyClients[id].conn.close(); delete tourneyClients[id]; 
+    broadcastTourneyState(); renderAdminMatches(); updateSelects();
 }
-function tBan(id) { 
-    if(!tourneyClients[id]) return;
-    tourneyClients[id].banned = !tourneyClients[id].banned; 
-    broadcastTourneyState(); 
-}
-
-// --- MODERASYON (Silme & Bildirme) ---
+function tBan(id) { if(!tourneyClients[id]) return; tourneyClients[id].banned = !tourneyClients[id].banned; broadcastTourneyState(); }
 function tDeleteMsg(msgId) {
-    let el = document.getElementById(`admin-${msgId}`);
-    if(el) el.innerHTML = `<span class="deleted-msg">Bu mesaj admin tarafından silindi.</span>`;
+    let el = document.getElementById(`admin-${msgId}`); if(el) el.innerHTML = `<span class="deleted-msg">Silindi.</span>`;
     Object.values(tourneyClients).forEach(c => c.conn.send({ type: 'T_DEL_MSG', msgId: msgId }));
 }
 
-function handleTourneyDataHost(peerId, c, data) {
-    if(data.type === 'T_JOIN') {
-        tourneyClients[peerId] = { name: escapeHTML(data.name), score: 0, banned: false, conn: c };
-        broadcastTourneyState();
-    }
-    if(data.type === 'T_CHAT') {
-        if(tourneyClients[peerId].banned) {
-            c.send({ type: 'T_BANNED_WARN' });
-            return;
-        }
-        broadcastTourneyChat(peerId, tourneyClients[peerId].name, data.msg);
-    }
-    if(data.type === 'T_MOVE') {
-        handleHostTourneyMove(data.mId, peerId, data.index);
-    }
-    if(data.type === 'T_REPORT') {
-        showPopup("Rapor Edildi", `${tourneyClients[peerId].name}, şu kişiyi şikayet etti: ${data.sender}`);
-        let el = document.getElementById(`admin-${data.msgId}`);
-        if(el) el.classList.add('reported-msg');
-    }
-}
-
-// --- TURNUVA SİSTEMİ (CLIENT LOGIC) ---
-let myTourneyMatchId = null;
-let amIPlayer1 = false;
-let myTourneyName = "";
+// ==========================================
+// --- TURNUVA SİSTEMİ (CLIENT) ---
+// ==========================================
+let myTourneyMatchId = null; let amIPlayer1 = false; let myTourneyName = "";
 
 function joinTournament() {
-    let code = document.getElementById('tourney-join-id').value.trim();
+    let c = document.getElementById('tourney-join-id').value.trim();
     myTourneyName = document.getElementById('tourney-player-name').value.trim() || "Misafir";
-    
-    if (code.length < 5) return showPopup("Hata", "Geçerli bir Turnuva Kodu girin.");
+    if (c.length < 5) return showPopup("Hata", "Kod girin.");
     
     peer = new Peer();
     peer.on('open', () => {
-        conn = peer.connect("trmng-" + code);
+        conn = peer.connect("trmng-" + c);
         conn.on('open', () => {
             conn.send({ type: 'T_JOIN', name: myTourneyName });
-            showScreen('tourney-lobby-screen');
-            document.getElementById('tourney-client-status').innerText = "Bağlanıldı.";
+            showScreen('tourney-lobby-screen'); document.getElementById('tourney-client-status').innerText = "Bağlanıldı.";
         });
         conn.on('data', handleTourneyDataClient);
-        conn.on('error', () => showPopup("Hata", "Sunucu bulunamadı."));
+        conn.on('error', () => showPopup("Hata", "Bulunamadı."));
     });
 }
 
-function cReportMsg(msgId, senderName) {
-    if(conn) conn.send({ type: 'T_REPORT', msgId: msgId, sender: senderName });
-    showPopup("Bilgi", "Mesaj moderatöre bildirildi.");
-}
-
-function handleTourneyDataClient(data) {
-    if(data.type === 'T_STATE') {
-        let html = data.list.map(p => `<div>${p.name} - Puan: ${p.score}</div>`).join('');
-        document.getElementById('tourney-standings').innerHTML = html;
+function handleTourneyDataClient(d) {
+    if(d.type === 'T_ERROR') { showPopup("Hata", d.msg, "Tamam", ()=>goHome()); }
+    else if(d.type === 'T_STATE') {
+        document.getElementById('tourney-standings').innerHTML = d.list.map(p => `<div>${p.name} - ${p.score} P.</div>`).join('');
+        document.getElementById('tourney-matches-client').innerHTML = d.matches.map(m => {
+            let act = m.status === 'active' ? `<button class="chat-action-btn green" onclick="cWatch('${m.id}')">İzle</button>` : '';
+            return `<div class="match-item"><div>${m.p1N} vs ${m.p2N} (${m.status})</div>${act}</div>`;
+        }).join('');
     }
-    else if(data.type === 'T_CHAT') {
-        appendChatToClient(data);
+    else if(d.type === 'T_CHAT') appendChatToClient(d);
+    else if(d.type === 'T_BANNED_WARN') showPopup("Uyarı", dict[currentLang].chat_banned);
+    else if(d.type === 'T_DEL_MSG') { let el = document.getElementById(`client-${d.msgId}`); if(el) el.innerHTML = `<span class="deleted-msg">Silindi.</span>`; }
+    else if(d.type === 'T_KICKED') showPopup("Uyarı", dict[currentLang].kicked, "Tamam", () => goHome());
+    else if(d.type === 'T_TOURNEY_END') {
+        let html = d.list.map((p,i)=>`<div>${i+1}. ${p.name} - ${p.score} Puan</div>`).join('');
+        showPopup("Turnuva Bitti", "Sıralama:", "Ana Menü", ()=>goHome(), html);
     }
-    else if(data.type === 'T_BANNED_WARN') {
-        showPopup("Uyarı", dict[currentLang].chat_banned);
+    else if(d.type === 'T_START_GAME') {
+        gameMode = 'tourney'; myTourneyMatchId = d.mId; amIPlayer1 = d.isP1;
+        board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0]; isGameActive = true; myTurnInOnline = amIPlayer1; isSpectating = false;
+        document.getElementById('p1-name').innerText = amIPlayer1 ? myTourneyName : d.oppName;
+        document.getElementById('p2-name').innerText = amIPlayer1 ? d.oppName : myTourneyName;
+        document.getElementById('spectator-label').style.display = 'none';
+        showScreen('game-screen'); updateStatus();
     }
-    else if(data.type === 'T_DEL_MSG') {
-        let el = document.getElementById(`client-${data.msgId}`);
-        if(el) el.innerHTML = `<span class="deleted-msg">Bu mesaj admin tarafından silindi.</span>`;
-    }
-    else if(data.type === 'T_KICKED') {
-        showPopup("Bilgi", dict[currentLang].kicked, "Tamam", () => goHome());
-    }
-    else if(data.type === 'T_START_GAME') {
-        gameMode = 'tourney';
-        myTourneyMatchId = data.mId;
-        amIPlayer1 = data.isP1;
-        
-        board = [4,4,4,4,4,4,0,4,4,4,4,4,4,0];
-        isGameActive = true;
-        myTurnInOnline = amIPlayer1;
-        
-        document.getElementById('p1-name').innerText = amIPlayer1 ? myTourneyName : data.oppName;
-        document.getElementById('p2-name').innerText = amIPlayer1 ? data.oppName : myTourneyName;
-        
-        showScreen('game-screen');
-        updateStatus();
-    }
-    else if(data.type === 'T_BOARD_SYNC') {
-        board = data.board;
-        myTurnInOnline = (data.turn === (amIPlayer1 ? 1 : 2));
-        updateStatus();
-        checkGameOver();
+    else if(d.type === 'T_BOARD_SYNC') {
+        board = d.board; myTurnInOnline = (d.turn === (amIPlayer1 ? 1 : 2));
+        updateStatus(); if(!isSpectating) checkGameOver();
     }
 }
 
-function sendTourneyMove(index) {
-    if(conn) conn.send({ type: 'T_MOVE', mId: myTourneyMatchId, index: index });
+function sendTourneyMove(idx) { if(conn) conn.send({ type: 'T_MOVE', mId: myTourneyMatchId, index: idx }); }
+function cReportMsg(id, s) { if(conn) conn.send({ type: 'T_REPORT', msgId: id, sender: s }); showPopup("Bilgi", "Bildirildi."); }
+function cWatch(mId) {
+    if(conn) conn.send({ type: 'T_WATCH', mId: mId });
+    gameMode = 'tourney'; isGameActive = true; isSpectating = true; myTurnInOnline = false; myTourneyMatchId = mId;
+    document.getElementById('p1-name').innerText = "P1"; document.getElementById('p2-name').innerText = "P2";
+    document.getElementById('spectator-label').style.display = 'block';
+    showScreen('game-screen');
 }
 
-// --- TURNUVA SOHBET İŞLEMLERİ (YENİLENMİŞ) ---
-function broadcastTourneyChat(peerId, sender, msg) {
-    let safeMsg = censorText(msg);
+// Sohbet İşlemleri
+function broadcastTourneyChat(pId, s, msg) {
     let msgId = 'msg_' + Math.random().toString(36).substr(2, 9);
-    let msgObj = { type: 'T_CHAT', id: msgId, peerId: peerId, sender: sender, msg: safeMsg };
-    
-    // Host UI Ekle
-    appendChatToAdmin(msgObj);
-    // Clientlere Gönder
-    Object.values(tourneyClients).forEach(c => c.conn.send(msgObj));
+    let mO = { type: 'T_CHAT', id: msgId, peerId: pId, sender: s, msg: censorText(msg) };
+    appendChatToAdmin(mO); Object.values(tourneyClients).forEach(c => c.conn.send(mO));
 }
-
 function sendTourneyChat(role) {
-    let inp = document.getElementById(role + '-chat-input');
-    if(!inp.value) return;
-    if(role === 'admin') broadcastTourneyChat("admin", "Admin", inp.value);
-    else conn.send({ type: 'T_CHAT', msg: inp.value });
-    inp.value = "";
+    let i = document.getElementById(role + '-chat-input'); if(!i.value) return;
+    if(role === 'admin') broadcastTourneyChat("admin", "Admin", i.value); else conn.send({ type: 'T_CHAT', msg: i.value });
+    i.value = "";
 }
-
-function appendChatToAdmin(msgObj) {
+function appendChatToAdmin(mO) {
     let ab = document.getElementById('tourney-chat-admin');
-    let html = `<div class="chat-msg" id="admin-${msgObj.id}">
-        <b>${msgObj.sender}:</b> ${msgObj.msg}
-        <div class="chat-actions">`;
-    if(msgObj.peerId !== 'admin') {
-        html += `<button class="chat-action-btn del" onclick="tDeleteMsg('${msgObj.id}')">Sil</button>
-                 <button class="chat-action-btn warn" onclick="tBan('${msgObj.peerId}')">Banla</button>
-                 <button class="chat-action-btn del" onclick="tKick('${msgObj.peerId}')">At (Kick)</button>`;
-    }
-    html += `</div></div>`;
-    ab.innerHTML += html;
+    let act = mO.peerId !== 'admin' ? `<button class="chat-action-btn del" onclick="tDeleteMsg('${mO.id}')">Sil</button><button class="chat-action-btn warn" onclick="tBan('${mO.peerId}')">Ban</button>` : '';
+    ab.innerHTML += `<div class="chat-msg" id="admin-${mO.id}"><b>${mO.sender}:</b> ${mO.msg}<div class="chat-actions">${act}</div></div>`;
     ab.scrollTop = ab.scrollHeight;
 }
-
-function appendChatToClient(msgObj) {
+function appendChatToClient(mO) {
     let cb = document.getElementById('tourney-chat-client');
-    let html = `<div class="chat-msg" id="client-${msgObj.id}">
-        <b>${msgObj.sender}:</b> ${msgObj.msg}`;
-    if(msgObj.peerId !== 'admin' && msgObj.sender !== myTourneyName) {
-        html += `<div class="chat-actions"><button class="chat-action-btn warn" onclick="cReportMsg('${msgObj.id}', '${msgObj.sender}')">Bildir</button></div>`;
-    }
-    html += `</div>`;
-    cb.innerHTML += html;
+    let act = (mO.peerId !== 'admin' && mO.sender !== myTourneyName) ? `<div class="chat-actions"><button class="chat-action-btn warn" onclick="cReportMsg('${mO.id}', '${mO.sender}')">Bildir</button></div>` : '';
+    cb.innerHTML += `<div class="chat-msg" id="client-${mO.id}"><b>${mO.sender}:</b> ${mO.msg}${act}</div>`;
     cb.scrollTop = cb.scrollHeight;
 }
 
-// Başlangıç Ayarları
 toggleLanguage();
