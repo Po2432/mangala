@@ -5,18 +5,46 @@
     --text: #ffffff;
     --accent: #ff9f0a;
     --pit-bg: rgba(0, 0, 0, 0.4);
-    --safe-top: max(20px, env(safe-area-inset-top));
-    --safe-bottom: max(20px, env(safe-area-inset-bottom));
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
-body { background-color: var(--bg-color); color: var(--text); overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+* { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
+    user-select: none; 
+    -webkit-user-select: none; 
+    touch-action: manipulation; 
+}
 
-/* Şık Dil Butonu PC & Mobil Uyumu */
+body { 
+    background-color: var(--bg-color); 
+    color: var(--text); 
+    display: flex; 
+    flex-direction: column;
+    min-height: 100vh;
+    /* OVERFLOW SORUNU BURADA ÇÖZÜLDÜ: */
+    overflow-y: auto; 
+    overflow-x: hidden;
+}
+
+/* Sürüm Bilgisi */
+#app-version {
+    position: fixed;
+    bottom: 10px;
+    left: 15px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* DİL BUTONU SORUNU BURADA ÇÖZÜLDÜ: width: max-content atandı. */
 #lang-btn {
-    position: absolute;
-    top: var(--safe-top);
-    right: 20px;
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    width: max-content; 
     padding: 8px 16px;
     font-size: 0.9rem;
     font-weight: 600;
@@ -27,23 +55,42 @@ body { background-color: var(--bg-color); color: var(--text); overflow: hidden; 
     color: var(--text);
     border-radius: 20px;
     cursor: pointer;
-    z-index: 100;
+    z-index: 1000;
     transition: all 0.2s ease;
 }
 #lang-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
 
 /* Popup (Modal) */
-.overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
+.overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
 .overlay.active { display: flex; }
 .popup-box { background: #1c1c1e; border: 1px solid var(--accent); border-radius: 20px; padding: 30px; text-align: center; width: 90%; max-width: 400px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); animation: popIn 0.3s ease-out; }
 @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-.screen { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+/* Ekran (Sayfa) Yöneticisi */
+.screen { 
+    display: none; 
+    width: 100%; 
+    min-height: 100vh; 
+    flex-direction: column; 
+    align-items: center; 
+    padding: 70px 15px 40px 15px; /* Dil ve sürüm yazılarına yer açıldı */
+}
 .screen.active { display: flex; }
 
 /* Ana Paneller */
-.glass-panel { background: var(--panel-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid var(--border); border-radius: 24px; padding: 30px 25px; text-align: center; width: 90%; max-width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
-.glass-panel.wide { max-width: 800px; padding: 25px; } /* Turnuva panelleri PC'de daha geniş */
+.glass-panel { 
+    background: var(--panel-bg); 
+    backdrop-filter: blur(15px); 
+    border: 1px solid var(--border); 
+    border-radius: 24px; 
+    padding: 30px 25px; 
+    text-align: center; 
+    width: 100%; 
+    max-width: 450px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4); 
+    margin: auto; /* Dikeyde ve yatayda güvenli ortalama */
+}
+.glass-panel.wide { max-width: 900px; } /* PC'de Admin/Lobi panelleri daha geniş durur */
 
 .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 h1 { font-size: 2.5rem; margin-bottom: 5px; color: var(--accent); letter-spacing: 1px;}
@@ -69,10 +116,10 @@ input[type="text"]:focus { border-color: var(--accent); }
 .tab-content { display: none; }
 .tab-content.active { display: flex; }
 
-/* İçerik Panelleri ve Split View */
-.split-view { display: flex; flex-direction: row; gap: 15px; width: 100%; height: 350px; }
-.panel-section { flex: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 16px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); }
-.scroll-list { flex: 1; overflow-y: auto; text-align: left; font-size: 0.9rem; padding-right: 5px; }
+/* İçerik Panelleri ve Scroll Listeler */
+.split-view { display: flex; flex-direction: row; gap: 15px; width: 100%; min-height: 400px; height: auto; }
+.panel-section { flex: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 16px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); max-height: 60vh; }
+.scroll-list { flex: 1; overflow-y: auto; min-height: 0; text-align: left; font-size: 0.9rem; padding-right: 5px; } /* min-height:0 çok kritik, scrollun çalışmasını sağlar */
 
 /* Chat ve Listeler */
 .chat-msg { position: relative; margin-bottom: 8px; padding: 8px 10px; background: rgba(255,255,255,0.08); border-radius: 10px; word-break: break-word; }
@@ -91,13 +138,13 @@ input[type="text"]:focus { border-color: var(--accent); }
 .chat-input-row input { margin: 0; }
 .chat-input-row button { margin: 0; width: auto; flex: 1; padding: 10px; }
 
-/* Oyun Tahtası (PC İlk Optimizasyon) */
-.header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; position: absolute; top: var(--safe-top); left: 0;}
+/* Oyun Tahtası Arayüzü */
+.game-header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .back-btn-small { width: auto; padding: 10px 16px; font-size: 0.9rem; background: #333; color: white; margin: 0; border-radius: 10px;}
 .back-btn-small:hover { background: #444; }
 #status-text { font-size: 1.3rem; font-weight: bold; color: var(--accent); text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
-.board-container { display: grid; grid-template-columns: 90px 1fr 90px; gap: 12px; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 24px; padding: 20px; width: 95%; max-width: 900px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); }
+.board-container { display: grid; grid-template-columns: 90px 1fr 90px; gap: 12px; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 24px; padding: 20px; width: 100%; max-width: 900px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); margin: auto;}
 .store { background: var(--pit-bg); border-radius: 45px; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; font-weight: bold; color: var(--accent); box-shadow: inset 0 4px 12px rgba(0,0,0,0.8); }
 .pits-grid { display: grid; grid-template-rows: 1fr 1fr; gap: 12px; }
 .pit-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
@@ -108,27 +155,26 @@ input[type="text"]:focus { border-color: var(--accent); }
 .pit.disabled { opacity: 0.6; pointer-events: none; }
 .player-info { margin-top: 25px; font-size: 1.3rem; text-align: center; opacity: 0.9; }
 
-/* Responsive: Tablet ve Mobil Düzenlemeleri */
-@media (max-width: 768px) {
+/* Responsive (Mobil / Tablet Optimizasyonu) */
+@media (max-width: 800px) {
     .glass-panel.wide { padding: 20px 15px; }
-    .split-view { flex-direction: column; height: auto; min-height: 400px;}
-    .panel-section { height: 250px; flex: none; }
+    .split-view { flex-direction: column; height: auto; min-height: unset; }
+    .panel-section { max-height: 350px; flex: none; height: 350px; }
     
-    .board-container { grid-template-columns: 70px 1fr 70px; padding: 15px; gap: 8px; }
-    .store { font-size: 1.8rem; border-radius: 35px; }
-    .pit { font-size: 1.4rem; }
+    .board-container { grid-template-columns: 60px 1fr 60px; padding: 15px; gap: 8px; }
+    .store { font-size: 1.6rem; border-radius: 30px; }
+    .pit { font-size: 1.3rem; }
     .pits-grid, .pit-row { gap: 8px; }
-    .header { padding: 10px 15px; }
 }
 
 @media (max-width: 480px) {
-    h1 { font-size: 2rem; }
+    h1 { font-size: 2.2rem; }
     .glass-panel { padding: 25px 15px; }
     .tabs { flex-wrap: wrap; }
     
-    .board-container { grid-template-columns: 50px 1fr 50px; padding: 8px; gap: 5px; border-radius: 16px;}
-    .store { font-size: 1.3rem; border-radius: 20px; }
-    .pit { font-size: 1.1rem; }
+    .board-container { grid-template-columns: 45px 1fr 45px; padding: 10px; gap: 5px; border-radius: 16px;}
+    .store { font-size: 1.2rem; border-radius: 20px; }
+    .pit { font-size: 1rem; }
     .pits-grid, .pit-row { gap: 5px; }
     #status-text { font-size: 1.1rem; }
     #lang-btn { padding: 6px 12px; font-size: 0.8rem; }
