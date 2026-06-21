@@ -271,7 +271,7 @@ function closeWiFiRoom() { if(conn && conn.open) conn.send({type:'ROOM_CLOSED'})
 // ==========================================
 let tourneyClients = {}; let tourneyMatches = {}; let tourneyCode = ""; let matchCounter = 0;
 let chatLocked = false; let repEnabled = true; let adminWatchingId = null;
-let bannedUsernames = []; // YENİ: Kara Liste Özelliği
+let bannedUsernames = []; // Kara Liste Özelliği
 
 function toggleChatLock() { chatLocked = document.getElementById('chat-lock-toggle').checked; }
 function toggleReport() { repEnabled = document.getElementById('report-toggle').checked; }
