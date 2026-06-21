@@ -13,11 +13,8 @@
 </head>
 <body>
     <button id="lang-btn" onclick="toggleLanguage()">EN / TR</button>
+    <div id="app-version">v1.4.0</div>
 
-    <!-- Her Zaman Görünür Sürüm Numarası v1.3.0 -->
-    <div id="app-version">v1.3.0</div>
-
-    <!-- Özel Popup Overlay -->
     <div id="popup-overlay" class="overlay">
         <div class="popup-box">
             <h2 id="popup-title">Başlık</h2>
@@ -89,19 +86,20 @@
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchAdminTab('tab-admin-players')" data-i18n="tab_players">Oyuncular</button>
                 <button class="tab-btn" onclick="switchAdminTab('tab-admin-matches')" data-i18n="tab_matches">Maçlar</button>
+                <button class="tab-btn" onclick="switchAdminTab('tab-admin-bracket')" data-i18n="tab_bracket">Eleme Ağacı</button>
                 <button class="tab-btn" onclick="switchAdminTab('tab-admin-settings')" data-i18n="tab_settings">Ayarlar & Sohbet</button>
             </div>
 
             <div id="tab-admin-players" class="tab-content active split-view">
                 <div class="panel-section">
-                    <h3 data-i18n="tab_players">Oyuncular (Sıralama)</h3>
+                    <h3 data-i18n="tab_players">Oyuncular (Grup / Genel Sıralama)</h3>
                     <div id="tourney-player-list" class="scroll-list"></div>
                 </div>
             </div>
 
             <div id="tab-admin-matches" class="tab-content split-view">
                 <div class="panel-section">
-                    <h3 data-i18n="create_match">Yeni Eşleşme Yarat</h3>
+                    <h3 data-i18n="create_match">Yeni Manuel Maç Ekle (Grup Aşaması)</h3>
                     <div style="display:flex; gap:5px; margin-bottom:5px;">
                         <select id="sel-p1" class="dropdown" style="margin:0;"></select>
                         <select id="sel-p2" class="dropdown" style="margin:0;"></select>
@@ -111,12 +109,24 @@
                 </div>
             </div>
 
+            <div id="tab-admin-bracket" class="tab-content split-view">
+                <div class="panel-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 data-i18n="tab_bracket">Eleme Ağacı (Final Aşaması)</h3>
+                        <button id="btn-generate-bracket" class="chat-action-btn green" style="padding:8px; font-size:0.9rem;" onclick="generateBracket()">Ağacı Oluştur (Top 8 / 4)</button>
+                    </div>
+                    <div id="bracket-container-admin" class="bracket-wrapper scroll-list" style="margin-top:10px;">
+                        <div style="opacity:0.6; text-align:center; padding-top:20px;">Ağaç henüz oluşturulmadı veya Puan modundasınız.</div>
+                    </div>
+                </div>
+            </div>
+
             <div id="tab-admin-settings" class="tab-content split-view">
                 <div class="panel-section" style="flex:1;">
                     <h3 data-i18n="tab_settings">Sistem Ayarları</h3>
                     <select id="tourney-system" class="dropdown" onchange="updateTourneySystem()">
-                        <option value="points" data-i18n="opt_points">Puan Sistemi (Toplanan taşlar puandır)</option>
-                        <option value="knockout" data-i18n="opt_knockout">Eleme Usulü</option>
+                        <option value="points" data-i18n="opt_points">Puan Sistemi (Toplanan taşlar)</option>
+                        <option value="knockout" data-i18n="opt_knockout">Eleme Usulü (Ağaçlı)</option>
                     </select>
                     
                     <h3 data-i18n="blacklist" style="margin-top:15px;">Kara Liste (İsim Engelle)</h3>
@@ -133,7 +143,7 @@
                     </div>
                 </div>
                 <div class="panel-section" style="flex:1.5;">
-                    <h3 data-i18n="chat">Sohbet & Loglar</h3>
+                    <h3 data-i18n="chat">Genel Sohbet & Loglar</h3>
                     <div id="tourney-chat-admin" class="scroll-list chat-box"></div>
                     <div class="chat-input-row">
                         <input type="text" id="admin-chat-input" placeholder="...">
@@ -141,7 +151,6 @@
                     </div>
                 </div>
             </div>
-
             <button class="back-btn" onclick="goHome()" data-i18n="btn_back">Çık (Turnuvayı Kapat)</button>
         </div>
     </div>
@@ -157,6 +166,7 @@
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchClientTab('tab-client-rank')" data-i18n="tab_players">Durum</button>
                 <button class="tab-btn" onclick="switchClientTab('tab-client-matches')" data-i18n="tab_matches">Maçlar</button>
+                <button class="tab-btn" onclick="switchClientTab('tab-client-bracket')" data-i18n="tab_bracket">Ağaç</button>
                 <button class="tab-btn" onclick="switchClientTab('tab-client-chat')" data-i18n="chat">Sohbet</button>
             </div>
 
@@ -174,9 +184,18 @@
                 </div>
             </div>
 
+            <div id="tab-client-bracket" class="tab-content split-view">
+                <div class="panel-section">
+                    <h3 data-i18n="tab_bracket">Eleme Ağacı</h3>
+                    <div id="bracket-container-client" class="bracket-wrapper scroll-list">
+                        <div style="opacity:0.6; text-align:center; padding-top:20px;">Ağaç henüz oluşturulmadı.</div>
+                    </div>
+                </div>
+            </div>
+
             <div id="tab-client-chat" class="tab-content split-view">
                 <div class="panel-section">
-                    <h3 data-i18n="chat">Sohbet</h3>
+                    <h3 data-i18n="chat">Genel Sohbet</h3>
                     <div id="tourney-chat-client" class="scroll-list chat-box"></div>
                     <div class="chat-input-row">
                         <input type="text" id="client-chat-input" placeholder="...">
@@ -184,38 +203,51 @@
                     </div>
                 </div>
             </div>
-
             <button class="back-btn" onclick="goHome()" data-i18n="btn_back">Çıkış</button>
         </div>
     </div>
 
-    <!-- Oyun Ekranı -->
-    <div id="game-screen" class="screen">
-        <div class="game-header">
-            <button class="back-btn-small" onclick="leaveMatchScreen()" data-i18n="btn_menu">Menü / Çık</button>
-            <div id="status-text">Sıra Sende</div>
-            <button id="btn-close-room" class="back-btn-small" style="display:none; background:#e74c3c;" onclick="closeWiFiRoom()" data-i18n="btn_close_room">Odayı Kapat</button>
-        </div>
+    <!-- Oyun Ekranı (Oda İçi Tasarımı Bölündü) -->
+    <div id="game-screen" class="screen" style="padding:0;">
+        <div class="game-main-area">
+            <div class="game-board-area">
+                <div class="game-header">
+                    <button class="back-btn-small" onclick="leaveMatchScreen()" data-i18n="btn_menu">Menü / Çık</button>
+                    <div id="status-text">Sıra Sende</div>
+                    <button id="btn-close-room" class="back-btn-small" style="display:none; background:#e74c3c;" onclick="closeWiFiRoom()" data-i18n="btn_close_room">Odayı Kapat</button>
+                </div>
 
-        <div id="admin-controls" style="display:none; background:rgba(0,0,0,0.5); backdrop-filter:blur(5px); border-radius:12px; padding:10px; margin-bottom:15px; gap:8px; justify-content:center; flex-wrap:wrap; z-index: 10;">
-            <button class="chat-action-btn" onclick="aUndo()" data-i18n="btn_undo">Geri</button>
-            <button class="chat-action-btn" onclick="aRedo()" data-i18n="btn_redo">İleri</button>
-            <button class="chat-action-btn warn" onclick="aRestart()" data-i18n="btn_restart">Baştan</button>
-            <button class="chat-action-btn del" onclick="aEndEarly()" data-i18n="btn_end_match">Bitir</button>
-        </div>
-        
-        <div class="board-container">
-            <div class="store" id="store-p2">0</div>
-            <div class="pits-grid">
-                <div class="pit-row" id="row-p2"></div>
-                <div class="pit-row" id="row-p1"></div>
+                <div id="admin-controls" style="display:none; background:rgba(0,0,0,0.5); backdrop-filter:blur(5px); border-radius:12px; padding:10px; margin-bottom:15px; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button class="chat-action-btn" onclick="aUndo()" data-i18n="btn_undo">Geri</button>
+                    <button class="chat-action-btn" onclick="aRedo()" data-i18n="btn_redo">İleri</button>
+                    <button class="chat-action-btn warn" onclick="aRestart()" data-i18n="btn_restart">Baştan</button>
+                    <button class="chat-action-btn del" onclick="aEndEarly()" data-i18n="btn_end_match">Bitir</button>
+                </div>
+                
+                <div class="board-container">
+                    <div class="store" id="store-p2">0</div>
+                    <div class="pits-grid">
+                        <div class="pit-row" id="row-p2"></div>
+                        <div class="pit-row" id="row-p1"></div>
+                    </div>
+                    <div class="store" id="store-p1">0</div>
+                </div>
+                
+                <div class="player-info" id="player-info">
+                    <span id="p1-name">Oyuncu 1</span> vs <span id="p2-name">Oyuncu 2</span>
+                    <div id="spectator-label" style="display:none; color:var(--accent); font-size:1.1rem; margin-top:8px; font-weight:bold;" data-i18n="spectator_mode">İzleyici Modu</div>
+                </div>
             </div>
-            <div class="store" id="store-p1">0</div>
-        </div>
-        
-        <div class="player-info" id="player-info">
-            <span id="p1-name">Oyuncu 1</span> vs <span id="p2-name">Oyuncu 2</span>
-            <div id="spectator-label" style="display:none; color:var(--accent); font-size:1.1rem; margin-top:8px; font-weight:bold;" data-i18n="spectator_mode">İzleyici Modu</div>
+
+            <!-- Oyun İçi Özel Sohbet -->
+            <div class="game-sidebar" id="in-game-sidebar" style="display:none;">
+                <div style="font-weight:bold; margin-bottom:10px; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:5px;">Oda Sohbeti</div>
+                <div id="ig-chat-msgs" class="scroll-list chat-box" style="margin-bottom:10px;"></div>
+                <div class="chat-input-row" style="margin-top:auto;">
+                    <input type="text" id="ig-chat-input" placeholder="...">
+                    <button onclick="sendIGChat()">Gönder</button>
+                </div>
+            </div>
         </div>
     </div>
 
