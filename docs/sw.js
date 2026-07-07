@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mangala-v1';
+const CACHE_NAME = 'mangala-v1.5.0';
 const ASSETS = [
     './',
     './index.html',
