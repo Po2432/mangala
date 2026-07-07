@@ -12,8 +12,14 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
+    <!-- Güncelleme Uyarı Afişi -->
+    <div id="update-banner" style="display:none; position:fixed; top:0; left:0; width:100%; background:#2ecc71; color:black; text-align:center; padding:12px; z-index:9999; font-weight:bold; box-shadow:0 4px 10px rgba(0,0,0,0.5);">
+        Yeni bir sürüm mevcut! 
+        <button onclick="applyUpdate()" style="margin-left:15px; padding:6px 15px; background:#fff; color:#000; border-radius:8px; width:auto; border:2px solid #000;">Önbelleği Temizle & Güncelle</button>
+    </div>
+
     <button id="lang-btn" onclick="toggleLanguage()">EN / TR</button>
-    <div id="app-version">v1.4.0</div>
+    <div id="app-version">v1.5.0</div>
 
     <div id="popup-overlay" class="overlay">
         <div class="popup-box">
@@ -38,11 +44,15 @@
 
     <!-- Bot Menüsü -->
     <div id="bot-menu-screen" class="screen">
-        <div class="glass-panel">
+        <div class="glass-panel" style="max-height: 80vh; overflow-y: auto;">
             <h2 data-i18n="bot_title">Zorluk Seçin</h2>
             <button onclick="startGame('bot', 'easy')" data-i18n="bot_easy">Kolay</button>
             <button onclick="startGame('bot', 'medium')" data-i18n="bot_medium">Orta</button>
             <button onclick="startGame('bot', 'hard')" data-i18n="bot_hard">Zor</button>
+            <button onclick="startGame('bot', 'nightmare')" style="background:#e74c3c; color:white;" data-i18n="bot_nightmare">Kabus (Nightmare)</button>
+            <button onclick="startGame('bot', 'ultra1')" style="background:#8e44ad; color:white;">Ultra 1 (Hileci)</button>
+            <button onclick="startGame('bot', 'ultra2')" style="background:#8e44ad; color:white;">Ultra 2 (Ağır Hileci)</button>
+            <button onclick="startGame('bot', 'ultra3')" style="background:#8e44ad; color:white; border:2px solid #fff;">Ultra 3 (İmkansız)</button>
             <button class="back-btn" onclick="showScreen('menu-screen')" data-i18n="btn_back">Geri</button>
         </div>
     </div>
@@ -94,6 +104,19 @@
                 <div class="panel-section">
                     <h3 data-i18n="tab_players">Oyuncular (Grup / Genel Sıralama)</h3>
                     <div id="tourney-player-list" class="scroll-list"></div>
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; margin-top:10px;">
+                        <h3 style="font-size:0.9rem; color:#fff;">Turnuvaya Yapay Zeka Ekle</h3>
+                        <div style="display:flex; gap:5px;">
+                            <select id="tourney-bot-diff" class="dropdown" style="margin:0;">
+                                <option value="easy">Kolay Bot</option>
+                                <option value="medium">Orta Bot</option>
+                                <option value="hard">Zor Bot</option>
+                                <option value="nightmare">Kabus Bot</option>
+                                <option value="ultra3">Ultra 3 Bot (Hileci)</option>
+                            </select>
+                            <button onclick="tAddBot()" style="padding:10px; margin:0; width:max-content;">Bot Ekle</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -115,9 +138,7 @@
                         <h3 data-i18n="tab_bracket">Eleme Ağacı (Final Aşaması)</h3>
                         <button id="btn-generate-bracket" class="chat-action-btn green" style="padding:8px; font-size:0.9rem;" onclick="generateBracket()">Ağacı Oluştur (Top 8 / 4)</button>
                     </div>
-                    <div id="bracket-container-admin" class="bracket-wrapper scroll-list" style="margin-top:10px;">
-                        <div style="opacity:0.6; text-align:center; padding-top:20px;">Ağaç henüz oluşturulmadı veya Puan modundasınız.</div>
-                    </div>
+                    <div id="bracket-container-admin" class="bracket-wrapper scroll-list" style="margin-top:10px;"></div>
                 </div>
             </div>
 
@@ -128,7 +149,6 @@
                         <option value="points" data-i18n="opt_points">Puan Sistemi (Toplanan taşlar)</option>
                         <option value="knockout" data-i18n="opt_knockout">Eleme Usulü (Ağaçlı)</option>
                     </select>
-                    
                     <h3 data-i18n="blacklist" style="margin-top:15px;">Kara Liste (İsim Engelle)</h3>
                     <div style="display:flex; gap:5px; margin-bottom:5px;">
                         <input type="text" id="blacklist-input" placeholder="...">
@@ -176,23 +196,18 @@
                     <div id="tourney-standings" class="scroll-list"></div>
                 </div>
             </div>
-            
             <div id="tab-client-matches" class="tab-content split-view">
                 <div class="panel-section">
                     <h3 data-i18n="active_matches">Yaklaşan & Aktif Maçlar</h3>
                     <div id="tourney-matches-client" class="scroll-list"></div>
                 </div>
             </div>
-
             <div id="tab-client-bracket" class="tab-content split-view">
                 <div class="panel-section">
                     <h3 data-i18n="tab_bracket">Eleme Ağacı</h3>
-                    <div id="bracket-container-client" class="bracket-wrapper scroll-list">
-                        <div style="opacity:0.6; text-align:center; padding-top:20px;">Ağaç henüz oluşturulmadı.</div>
-                    </div>
+                    <div id="bracket-container-client" class="bracket-wrapper scroll-list"></div>
                 </div>
             </div>
-
             <div id="tab-client-chat" class="tab-content split-view">
                 <div class="panel-section">
                     <h3 data-i18n="chat">Genel Sohbet</h3>
@@ -207,7 +222,7 @@
         </div>
     </div>
 
-    <!-- Oyun Ekranı (Oda İçi Tasarımı Bölündü) -->
+    <!-- Oyun Ekranı -->
     <div id="game-screen" class="screen" style="padding:0;">
         <div class="game-main-area">
             <div class="game-board-area">
