@@ -1,10 +1,31 @@
-const APP_VERSION = "v1.4.0";
+const APP_VERSION = "v1.5.0";
 
+// --- PWA GÜNCELLEME KONTROLÜ (Update Checker) ---
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.onupdatefound = () => {
+            const newWorker = reg.installing;
+            newWorker.onstatechange = () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    document.getElementById('update-banner').style.display = 'block';
+                }
+            };
+        };
+    });
+}
+function applyUpdate() {
+    if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+        .then(() => { location.reload(true); });
+    } else { location.reload(true); }
+}
+
+// --- ÇEVİRİ ---
 const dict = {
     tr: {
         title: "Mangala", subtitle: "Geleneksel Türk Strateji Oyunu",
         btn_local: "Yerel Çok Oyunculu", btn_bot: "Bilgisayara Karşı", btn_online: "Aynı Ağda Oyna (WiFi)", btn_tournament: "Turnuva Modu",
-        bot_title: "Zorluk Seçin", bot_easy: "Kolay", bot_medium: "Orta", bot_hard: "Zor", btn_back: "Geri",
+        bot_title: "Zorluk Seçin", bot_easy: "Kolay", bot_medium: "Orta", bot_hard: "Zor", bot_nightmare: "Kabus (Nightmare)", btn_back: "Geri",
         online_title: "Çevrimiçi / WiFi", waiting_conn: "Bağlantı bekleniyor...", btn_host: "Oda Kur", btn_join: "Odaya Katıl",
         tourney_title: "Turnuva Modu", btn_host_tourney: "Turnuva Kur (Admin)", btn_join_tourney: "Turnuvaya Katıl",
         tourney_lobby: "Turnuva Lobisi", btn_menu: "Menü / Çık",
@@ -21,7 +42,7 @@ const dict = {
     en: {
         title: "Mangala", subtitle: "Traditional Strategy Game",
         btn_local: "Local Multiplayer", btn_bot: "Play vs Bot", btn_online: "Play on WiFi", btn_tournament: "Tournament Mode",
-        bot_title: "Select Difficulty", bot_easy: "Easy", bot_medium: "Medium", bot_hard: "Hard", btn_back: "Back",
+        bot_title: "Select Difficulty", bot_easy: "Easy", bot_medium: "Medium", bot_hard: "Hard", bot_nightmare: "Nightmare", btn_back: "Back",
         online_title: "Online / WiFi", waiting_conn: "Waiting...", btn_host: "Host Game", btn_join: "Join Game",
         tourney_title: "Tournament Mode", btn_host_tourney: "Host Tournament", btn_join_tourney: "Join Tournament",
         tourney_lobby: "Tournament Lobby", btn_menu: "Menu / Leave",
@@ -52,23 +73,17 @@ function showPopup(title, message, btnText = "Tamam", callback = null, rankingsH
     document.getElementById('popup-message').innerText = message;
     document.getElementById('popup-btn').innerText = btnText;
     let rEl = document.getElementById('popup-rankings');
-    if(rankingsHtml) { rEl.style.display = 'block'; rEl.innerHTML = rankingsHtml; }
-    else { rEl.style.display = 'none'; rEl.innerHTML = ""; }
-    document.getElementById('popup-overlay').classList.add('active');
-    popupCallback = callback;
+    if(rankingsHtml) { rEl.style.display = 'block'; rEl.innerHTML = rankingsHtml; } else { rEl.style.display = 'none'; rEl.innerHTML = ""; }
+    document.getElementById('popup-overlay').classList.add('active'); popupCallback = callback;
 }
-function closePopup() {
-    document.getElementById('popup-overlay').classList.remove('active');
-    if(popupCallback) popupCallback();
-}
+function closePopup() { document.getElementById('popup-overlay').classList.remove('active'); if(popupCallback) popupCallback(); }
 
 const _bws = ["ZnVjaw==", "c2hpdA==", "Yml0Y2g=", "YXNzaG9sZQ==", "Y3VudA==", "YW1r", "b8On", "b3Jvc3B1", "c2lrdGly", "cGnDpwo=", "eWFycmFr", "eWF2xZ9haw==", "cGV6ZXZlbms=", "YXE=", "c2c=", "bmlnZ2Vy", "bmVncm8=", "bmF6aQ==", "aGl0bGVy", "a2lsbA=="];
 function getBadWords() { return _bws.map(w => decodeURIComponent(escape(atob(w.trim()))).replace(/\n/g, '')); }
 function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)); }
 function censorText(text) {
     let safeText = escapeHTML(text); let bw = getBadWords();
-    let regex = new RegExp("\\b(" + bw.join("|") + ")\\b", "gi");
-    return safeText.replace(regex, "***");
+    let regex = new RegExp("\\b(" + bw.join("|") + ")\\b", "gi"); return safeText.replace(regex, "***");
 }
 
 const _tps = ["d2lsbCBraWxs", "ZmluZCB5b3U=", "d2hlcmUgeW91IGxpdmU=", "YmVhdCB5b3U=", "c2VuaSDDtmxkw7xy", "ZXZpbmkgYmlsaQ==", "YWRyZXNpbmkgdmVy", "Z2ViZXJ0", "ZMO2dmVyaW0=", "w7Zsw7xyZWM="];
@@ -98,7 +113,7 @@ function goHome() {
     isGameActive = false; isSpectating = false; adminWatchingId = null;
     if(conn) { conn.close(); conn = null; }
     if(peer) { peer.destroy(); peer = null; }
-    Object.values(tourneyClients).forEach(c => c.conn.close());
+    Object.values(tourneyClients).forEach(c => { if(c.conn.close) c.conn.close(); });
     tourneyClients = {}; tourneyMatches = {}; bracketObj = {r8:[], r4:[], r2:[]}; tourneyState = 'LOBBY';
     showScreen('menu-screen'); 
 }
@@ -106,12 +121,10 @@ function leaveMatchScreen() {
     if(gameMode === 'tourney') {
         if(isHost) {
             adminWatchingId = null; document.getElementById('admin-controls').style.display = 'none';
-            document.getElementById('in-game-sidebar').style.display = 'none';
-            showScreen('tourney-host-screen');
+            document.getElementById('in-game-sidebar').style.display = 'none'; showScreen('tourney-host-screen');
         } else {
             if(isSpectating && conn) conn.send({type: 'T_UNWATCH', mId: myTourneyMatchId});
-            isSpectating = false; document.getElementById('in-game-sidebar').style.display = 'none';
-            showScreen('tourney-lobby-screen');
+            isSpectating = false; document.getElementById('in-game-sidebar').style.display = 'none'; showScreen('tourney-lobby-screen');
         }
     } else { goHome(); }
 }
@@ -196,7 +209,21 @@ function handleMove(idx) {
     if (checkGameOver()) return;
     if (!res.extraTurn) { currentPlayer = currentPlayer === 1 ? 2 : 1; if (gameMode === 'online') myTurnInOnline = (currentPlayer === (isHost ? 1 : 2)); }
     updateStatus();
-    if (gameMode === 'bot' && currentPlayer === 2 && isGameActive) setTimeout(playBotMove, 800);
+    
+    // Tek oyunculuda bot hamlesi tetikleme
+    if (gameMode === 'bot' && currentPlayer === 2 && isGameActive) {
+        document.getElementById('status-text').innerText = dict[currentLang].turn_bot;
+        setTimeout(() => {
+            let cr = applyCheats(board, 2, botDifficulty);
+            board = cr.board;
+            if(cr.cheated) renderBoard(); // Hile yapıldıysa anında göster
+            
+            setTimeout(() => {
+                let m = getBestMove(board, 2, botDifficulty, cr.disabled);
+                if(m !== -1) handleMove(m);
+            }, cr.cheated ? 600 : 0); // Hile varsa oyuncu görsün diye az bekle
+        }, 800);
+    }
 }
 
 function checkGameOver() {
@@ -226,16 +253,97 @@ function updateStatus() {
     renderBoard();
 }
 
-function playBotMove() {
-    let v = []; for (let i = 7; i <= 12; i++) { if (board[i] > 0) v.push(i); }
-    if (v.length === 0) return; let bM = v[0];
-    if (botDifficulty === 'easy') bM = v[Math.floor(Math.random() * v.length)];
-    else {
-        let f = false;
-        for (let m of v) { let r = executeMove([...board], 2, m); if (r.extraTurn || r.board[13] > board[13] + 1) { bM = m; f = true; break; } }
-        if(!f) bM = v[Math.floor(Math.random() * v.length)];
+// ==========================================
+// --- GELİŞMİŞ YAPAY ZEKA (BOT & HİLELER) ---
+// ==========================================
+function applyCheats(b, pNum, diff) {
+    let oppStore = pNum === 1 ? 13 : 6;
+    let myStore = pNum === 1 ? 6 : 13;
+    let cheated = false;
+    let disabled = false;
+
+    // Ultra 3 Özel Kuralı: Herhangi bir kuyuda 10 taş varsa hileler iptal!
+    let pits = b.slice(0,6).concat(b.slice(7,13));
+    if(pits.some(s => s >= 10)) disabled = true;
+
+    if (diff === 'ultra1') {
+        if (Math.random() < 0.2) { b[myStore]++; cheated = true; }
+    } else if (diff === 'ultra2') {
+        if (Math.random() < 0.35 && b[oppStore] > 0) { b[oppStore]--; b[myStore]++; cheated = true; }
+        if (Math.random() < 0.15) { b[myStore] += 2; cheated = true; }
+    } else if (diff === 'ultra3' && !disabled) {
+        // En yüksek taşı bul ve çal
+        let start = pNum === 1 ? 7 : 0; let end = pNum === 1 ? 12 : 5;
+        let maxIdx = start, maxVal = -1;
+        for(let i=start; i<=end; i++) { if(b[i] > maxVal) { maxVal=b[i]; maxIdx=i; } }
+        if(maxVal >= 2) { b[maxIdx]-=2; b[myStore]+=2; cheated = true; }
+        else if(b[oppStore] > 0) { b[oppStore]--; b[myStore]++; cheated = true; }
     }
-    handleMove(bM);
+    return { board: b, cheated: cheated, disabled: disabled };
+}
+
+function getBestMove(b, pNum, diff, disableUltra3Cheat = false) {
+    let validMoves = [];
+    let start = pNum === 1 ? 0 : 7; let end = pNum === 1 ? 5 : 12;
+    for(let i=start; i<=end; i++) { if(b[i] > 0) validMoves.push(i); }
+    if(validMoves.length === 0) return -1;
+
+    // Büyü bozulduysa veya Kolay ise Rastgele
+    if (diff === 'easy' || (diff === 'ultra3' && disableUltra3Cheat)) {
+        return validMoves[Math.floor(Math.random() * validMoves.length)];
+    }
+    
+    let depth = 4;
+    // Performans (Lag) olmaması için Nightmare/Ultra derinliği 6 olarak sınırlandırıldı. (Milyonlarca ihtimal)
+    if(['nightmare', 'ultra1', 'ultra2', 'ultra3'].includes(diff)) depth = 6; 
+    
+    if(diff === 'medium') {
+        let found = false; let bestM = validMoves[0];
+        for (let m of validMoves) {
+            let res = executeMove([...b], pNum, m);
+            let myStore = pNum === 1 ? 6 : 13;
+            if (res.extraTurn || res.board[myStore] > b[myStore] + 1) { bestM = m; found = true; break; }
+        }
+        if(!found) return validMoves[Math.floor(Math.random() * validMoves.length)];
+        return bestM;
+    }
+    
+    let bestVal = -Infinity; let bestMove = validMoves[0];
+    for(let m of validMoves) {
+        let res = executeMove([...b], pNum, m);
+        let val = genericMinimax(res.board, depth, -Infinity, Infinity, !res.extraTurn, pNum, res.extraTurn ? pNum : (pNum===1?2:1));
+        if(val > bestVal) { bestVal = val; bestMove = m; }
+    }
+    return bestMove;
+}
+
+function genericMinimax(tb, depth, alpha, beta, isMaximizing, rootPNum, currTurn) {
+    let s1=0, s2=0; for(let i=0;i<6;i++)s1+=tb[i]; for(let i=7;i<13;i++)s2+=tb[i];
+    let rS = rootPNum === 1 ? 6 : 13; let oS = rootPNum === 1 ? 13 : 6;
+    if(depth === 0 || (s1===0 && s2===0)) return tb[rS] - tb[oS];
+
+    let st = currTurn === 1 ? 0 : 7; let en = currTurn === 1 ? 5 : 12;
+    if(isMaximizing) {
+        let maxEv = -Infinity;
+        for(let i=st; i<=en; i++) {
+            if(tb[i]===0) continue;
+            let r = executeMove([...tb], currTurn, i);
+            let ev = genericMinimax(r.board, depth-1, alpha, beta, r.extraTurn, rootPNum, r.extraTurn ? currTurn : (currTurn===1?2:1));
+            maxEv = Math.max(maxEv, ev); alpha = Math.max(alpha, ev);
+            if(beta <= alpha) break;
+        }
+        return maxEv === -Infinity ? (tb[rS]-tb[oS]) : maxEv;
+    } else {
+        let minEv = Infinity;
+        for(let i=st; i<=en; i++) {
+            if(tb[i]===0) continue;
+            let r = executeMove([...tb], currTurn, i);
+            let ev = genericMinimax(r.board, depth-1, alpha, beta, !r.extraTurn, rootPNum, r.extraTurn ? currTurn : (currTurn===1?2:1));
+            minEv = Math.min(minEv, ev); beta = Math.min(beta, ev);
+            if(beta <= alpha) break;
+        }
+        return minEv === Infinity ? (tb[rS]-tb[oS]) : minEv;
+    }
 }
 
 // --- 1V1 ONLINE ---
@@ -286,7 +394,7 @@ function closeWiFiRoom() { if(conn && conn.open) conn.send({type:'ROOM_CLOSED'})
 let tourneyClients = {}; let tourneyMatches = {}; let tourneyCode = ""; let matchCounter = 0;
 let chatLocked = false; let repEnabled = true; let adminWatchingId = null;
 let bannedUsernames = []; 
-let tourneyState = 'LOBBY'; // LOBBY, GROUP, BRACKET
+let tourneyState = 'LOBBY'; 
 let bracketObj = { r8: [], r4: [], r2: [] };
 
 function toggleChatLock() { chatLocked = document.getElementById('chat-lock-toggle').checked; }
@@ -315,6 +423,20 @@ function hostTournament() {
     peer.on('connection', c => { c.on('data', d => handleTourneyDataHost(c.peer, c, d)); });
 }
 
+// Turnuvaya Bot Ekleme Fonksiyonu
+function tAddBot() {
+    let diff = document.getElementById('tourney-bot-diff').value;
+    let bId = 'bot_' + Math.random().toString(36).substr(2,9);
+    let count = Object.values(tourneyClients).filter(c => c.isBot && c.difficulty === diff).length + 1;
+    tourneyClients[bId] = {
+        name: `Bot (${diff.toUpperCase()}) ${count}`,
+        score: 0, banned: false, isBot: true, difficulty: diff,
+        conn: { send: ()=>{} } // Sahte bağlantı nesnesi hata vermesini engeller
+    };
+    broadcastTourneyState(); updateSelects();
+    showPopup("Bilgi", "Bot turnuvaya başarıyla eklendi.");
+}
+
 function handleTourneyDataHost(pId, c, data) {
     if(data.type === 'T_JOIN') {
         if(data.version !== APP_VERSION) { c.send({ type: 'T_ERROR', msg: dict[currentLang].version_err }); setTimeout(()=>c.close(), 500); return; }
@@ -322,7 +444,7 @@ function handleTourneyDataHost(pId, c, data) {
         if(bannedUsernames.includes(reqName)) { c.send({ type: 'T_ERROR', msg: "Bu isim admin tarafından engellenmiştir." }); setTimeout(()=>c.close(), 500); return; }
         if(Object.values(tourneyClients).some(cl => cl.name.toLowerCase() === reqName)) { c.send({ type: 'T_ERROR', msg: "Bu isim kullanımda." }); setTimeout(()=>c.close(), 500); return; }
         
-        tourneyClients[pId] = { name: escapeHTML(data.name), score: 0, banned: false, conn: c };
+        tourneyClients[pId] = { name: escapeHTML(data.name), score: 0, banned: false, isBot: false, conn: c };
         c.send({ type: 'T_JOIN_OK' }); broadcastTourneyState(); updateSelects();
     }
     else if(data.type === 'T_CHAT') {
@@ -396,6 +518,9 @@ function aStartMatch(mId) {
     tourneyClients[m.p1].conn.send({ type: 'T_START_GAME', mId: mId, isP1: true, oppName: tourneyClients[m.p2].name });
     tourneyClients[m.p2].conn.send({ type: 'T_START_GAME', mId: mId, isP1: false, oppName: tourneyClients[m.p1].name });
     renderAdminMatches(); broadcastTourneyState();
+    
+    // Maç başladığında eğer ilk sıra bir botunsa tetikle
+    triggerTourneyBot(mId);
 }
 function aCancelMatch(mId) { delete tourneyMatches[mId]; renderAdminMatches(); broadcastTourneyState(); }
 function aForceWin(mId, winnerNum) {
@@ -405,6 +530,7 @@ function aForceWin(mId, winnerNum) {
     processMatchFinish(mId);
 }
 
+// Admin Board Logic
 function handleHostTourneyMove(mId, pId, idx) {
     let m = tourneyMatches[mId]; if(!m || m.status !== 'active') return;
     let isP1 = (m.p1 === pId); let pN = isP1 ? 1 : 2; if(m.turn !== pN) return; 
@@ -414,12 +540,42 @@ function handleHostTourneyMove(mId, pId, idx) {
     let over = checkTourneyGameOver(m.board);
     if(!res.extraTurn && !over) m.turn = m.turn === 1 ? 2 : 1;
 
-    broadcastMatchSync(mId); if(over) processMatchFinish(mId);
+    broadcastMatchSync(mId); 
+    
+    if(over) {
+        processMatchFinish(mId);
+    } else {
+        triggerTourneyBot(mId); // Yeni tur bota geçtiyse oynat
+    }
 }
+
+// Turnuva Maçlarında Bot Motorunu Tetikleme
+function triggerTourneyBot(mId) {
+    let m = tourneyMatches[mId];
+    if(!m || m.status !== 'active') return;
+    
+    let activeId = m.turn === 1 ? m.p1 : m.p2;
+    let pData = tourneyClients[activeId];
+    
+    if(pData && pData.isBot) {
+        setTimeout(() => {
+            // Hile kontrolü
+            let cr = applyCheats(m.board, m.turn, pData.difficulty);
+            m.board = cr.board;
+            if(cr.cheated) broadcastMatchSync(mId); // Çalınan taşları izleyicilere göster
+            
+            setTimeout(() => {
+                let move = getBestMove(m.board, m.turn, pData.difficulty, cr.disabled);
+                if(move !== -1) handleHostTourneyMove(mId, activeId, move);
+            }, cr.cheated ? 600 : 0);
+        }, 1000);
+    }
+}
+
 function broadcastMatchSync(mId) {
     let m = tourneyMatches[mId]; let pkt = { type: 'T_BOARD_SYNC', board: m.board, turn: m.turn };
-    if(tourneyClients[m.p1]) tourneyClients[m.p1].conn.send(pkt);
-    if(tourneyClients[m.p2]) tourneyClients[m.p2].conn.send(pkt);
+    if(tourneyClients[m.p1] && !tourneyClients[m.p1].isBot) tourneyClients[m.p1].conn.send(pkt);
+    if(tourneyClients[m.p2] && !tourneyClients[m.p2].isBot) tourneyClients[m.p2].conn.send(pkt);
     m.spectators.forEach(sId => { if(tourneyClients[sId]) tourneyClients[sId].conn.send(pkt); });
     if(adminWatchingId === mId) { board = m.board; myTurnInOnline = false; updateStatus(); }
 }
@@ -440,7 +596,6 @@ function processMatchFinish(mId) {
         if(m.isBracket) {
             let bMatch = bracketObj[m.round][m.slot];
             bMatch.winner = winnerId;
-            // Advance logic
             if(m.round === 'r8') {
                 let nSlot = Math.floor(m.slot / 2); let isP1 = (m.slot % 2 === 0); let nB = bracketObj.r4[nSlot];
                 if(!nB.mId) {
@@ -473,7 +628,7 @@ function aWatchMatch(mId) {
     document.getElementById('admin-controls').style.display = 'flex';
     document.getElementById('in-game-sidebar').style.display = 'flex';
     document.getElementById('spectator-label').style.display = 'block';
-    document.getElementById('ig-chat-msgs').innerHTML = ""; // Clear chat on enter
+    document.getElementById('ig-chat-msgs').innerHTML = ""; 
     showScreen('game-screen'); updateStatus();
 }
 function aUndo() {
@@ -509,14 +664,14 @@ function adminEndTournament(champId = null) {
 }
 
 function broadcastTourneyState() {
-    let list = Object.keys(tourneyClients).map(id => ({ id: id, name: tourneyClients[id].name, score: tourneyClients[id].score, banned: tourneyClients[id].banned })).sort((a,b)=>b.score - a.score);
+    let list = Object.keys(tourneyClients).map(id => ({ id: id, name: tourneyClients[id].name, score: tourneyClients[id].score, banned: tourneyClients[id].banned, isBot: tourneyClients[id].isBot })).sort((a,b)=>b.score - a.score);
     let ml = Object.keys(tourneyMatches).map(mId => {
         let m = tourneyMatches[mId]; return { id: mId, p1N: tourneyClients[m.p1]?.name, p2N: tourneyClients[m.p2]?.name, status: m.status };
     });
 
     let hList = document.getElementById('tourney-player-list');
     hList.innerHTML = list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>${p.name} <b style="color:var(--accent);">(${p.score})</b></span>
+        <span>${p.name} ${p.isBot ? "🤖" : ""} <b style="color:var(--accent);">(${p.score})</b></span>
         <div><span class="chat-action-btn warn" onclick="tBan('${p.id}')">${p.banned?'Unban':'Ban'}</span><span class="chat-action-btn del" onclick="tKick('${p.id}')">Kick</span></div>
     </div>`).join('');
     
@@ -527,7 +682,7 @@ function renderAdminMatches() {
     let sys = document.getElementById('tourney-system').value;
     let html = Object.keys(tourneyMatches).map(mId => {
         let m = tourneyMatches[mId]; let n1 = tourneyClients[m.p1]?.name || "?"; let n2 = tourneyClients[m.p2]?.name || "?";
-        if(m.p1 === null && m.p2 === null) return ''; // Boş bracket maçı
+        if(m.p1 === null && m.p2 === null) return ''; 
         let acts = "";
         if(m.status === 'pending') {
             if(m.p1 && m.p2) {
@@ -611,17 +766,14 @@ function handleTourneyDataClient(d) {
     else if(d.type === 'T_JOIN_OK') { showScreen('tourney-lobby-screen'); document.getElementById('tourney-client-status').innerText = "Bağlanıldı."; }
     else if(d.type === 'T_STATE') {
         tourneyState = d.state; bracketObj = d.bracketObj;
-        document.getElementById('tourney-standings').innerHTML = d.list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between;"><span>${p.name}</span><b style="color:var(--accent);">${p.score} P.</b></div>`).join('');
+        document.getElementById('tourney-standings').innerHTML = d.list.map(p => `<div class="match-item" style="display:flex; justify-content:space-between;"><span>${p.name} ${p.isBot ? "🤖" : ""}</span><b style="color:var(--accent);">${p.score} P.</b></div>`).join('');
         document.getElementById('tourney-matches-client').innerHTML = d.matches.map(m => {
             let act = m.status === 'active' ? `<button class="chat-action-btn green" onclick="cWatch('${m.id}')">İzle</button>` : '';
             return `<div class="match-item"><div style="margin-bottom:6px;">${m.p1N} vs ${m.p2N} <i>(${m.status})</i></div>${act}</div>`;
         }).join('');
-        // Sync Clients Bracket UI
+        
         let sysSelect = document.getElementById('tourney-system');
         if(sysSelect && sysSelect.value !== d.sys) { sysSelect.value = d.sys; }
-        renderBracketUI(); // Requires global variables tourneyClients which we dont have full access to in client, wait:
-        // Client renderBracketUI workaround: we don't have full tourneyClients mapped, so we rely on what host gave us in `d.list`.
-        // Actually, let's inject a lightweight client bracket renderer:
         if(d.sys === 'knockout' && tourneyState === 'BRACKET') renderClientBracket(d.bracketObj, d.list);
     }
     else if(d.type === 'T_CHAT') appendChatToClient(d);
@@ -676,13 +828,13 @@ function cWatch(mId) {
     showScreen('game-screen');
 }
 
-// Sohbet İşlemleri (Oyun içi sohbet dahil)
+// Sohbet İşlemleri
 function broadcastTourneyChat(pId, s, msg, mId = null) {
     let isThreat = detectThreat(msg);
     let msgId = 'msg_' + Math.random().toString(36).substr(2, 9);
     let mO = { type: 'T_CHAT', id: msgId, peerId: pId, sender: s, msg: censorText(msg), isThreat: isThreat, mId: mId };
     
-    appendChatToAdmin(mO); Object.values(tourneyClients).forEach(c => c.conn.send(mO));
+    appendChatToAdmin(mO); Object.values(tourneyClients).forEach(c => { if(!c.isBot) c.conn.send(mO); });
 }
 function sendTourneyChat(role) {
     let i = document.getElementById(role + '-chat-input'); if(!i.value) return;
@@ -707,7 +859,6 @@ function appendChatToAdmin(mO) {
     let html = `<div class="chat-msg ${reportClass}" id="admin-${mO.id}">${threatWarning}<b>${mO.sender}:</b> ${tag}${mO.msg}<div class="chat-actions">${act}</div></div>`;
     ab.innerHTML += html; ab.scrollTop = ab.scrollHeight;
     
-    // Admin oyundaysa ve o maça ait mesajsa oda sohbetine de ekle
     if(adminWatchingId && mO.mId === adminWatchingId) {
         ig.innerHTML += `<div class="chat-msg"><b>${mO.sender}:</b> ${mO.msg}</div>`;
         ig.scrollTop = ig.scrollHeight;
@@ -722,7 +873,6 @@ function appendChatToClient(mO) {
     cb.innerHTML += `<div class="chat-msg" id="client-${mO.id}"><b>${mO.sender}:</b> ${tag}${mO.msg}${act}</div>`;
     cb.scrollTop = cb.scrollHeight;
 
-    // Client oyundaysa ve o maça ait mesajsa oda sohbetine de ekle
     if((myTourneyMatchId === mO.mId) && document.getElementById('in-game-sidebar').style.display !== 'none') {
         ig.innerHTML += `<div class="chat-msg"><b>${mO.sender}:</b> ${mO.msg}</div>`;
         ig.scrollTop = ig.scrollHeight;
